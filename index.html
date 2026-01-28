@@ -3,102 +3,350 @@
 <head>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <title>InfiniTris Online - Victory Edition</title>
-    <style>
-        :root {
-            --bg-color: #f0f0f0;
-            --text-color: #333;
-            --menu-bg: #ffffff;
-            --cell-bg: #ffffff;
-            --grid-border: #000000;
-            --accent: #27ae60;
-            --shadow: rgba(0,0,0,0.2);
-        }
+    <title>InfiniTris Online - Pro Notation</title>
+	<style>
+		:root {
+			--bg-color: #f0f0f0;
+			--text-color: #333;
+			--menu-bg: #ffffff;
+			--cell-bg: #ffffff;
+			--grid-border: #000000;
+			--accent: #f1c40f; 
+			--shadow: rgba(0,0,0,0.2);
+			--history-bg: #e8e8e8;
+			--color-x: #ff4d4d;
+			--color-o: #4d94ff;
+			--color-rnd: #9b59b6;
+			--btn-play: #2ecc71;
+		}
 
-        .dark-mode {
-            --bg-color: #121212;
-            --text-color: #e0e0e0;
-            --menu-bg: #1e1e1e;
-            --cell-bg: #2d2d2d;
-            --grid-border: #444444;
-            --shadow: rgba(0,0,0,0.6);
-        }
+		.dark-mode {
+			--bg-color: #121212;
+			--text-color: #e0e0e0;
+			--menu-bg: #1e1e1e;
+			--cell-bg: #2d2d2d;
+			--grid-border: #444444;
+			--shadow: rgba(0,0,0,0.6);
+			--history-bg: #1a1a1a;
+		}
 
-        body { 
-            font-family: 'Segoe UI', sans-serif; 
-            text-align: center; 
-            background-color: var(--bg-color); 
-            color: var(--text-color);
-            margin: 0; padding: 20px; 
-            transition: background 0.5s, color 0.5s;
-        }
+		body { 
+			font-family: 'Segoe UI', sans-serif; 
+			text-align: center; 
+			background-color: var(--bg-color); 
+			color: var(--text-color);
+			margin: 0; padding: 20px; 
+			transition: background 0.5s, color 0.5s;
+		}
 
-        .btn-action, #night-mode-btn {
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
-        }
-        .btn-action:active { transform: scale(0.95); }
+		button, .btn-action, .btn-settings, #settings-toggle-btn {
+			transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+			cursor: pointer;
+		}
+		button:hover, .btn-action:hover, #settings-toggle-btn:hover {
+			transform: translateY(-3px) scale(1.02);
+			filter: brightness(1.1);
+			box-shadow: 0 5px 15px var(--shadow);
+		}
+		button:active, .btn-action:active {
+			transform: translateY(0) scale(0.98);
+		}
 
-        #sign-selection {
-            display: none;
-            margin-top: 20px;
-            padding: 20px;
-            background: var(--menu-bg);
-            border-radius: 15px;
-            border: 1px solid var(--grid-border);
-            box-shadow: 0 8px 20px var(--shadow);
-        }
+		#game-container {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			gap: 20px;
+			max-width: 950px;
+			margin: 0 auto;
+			position: relative;
+		}
 
-        .main-grid {
-            display: none; 
-            flex-wrap: wrap; justify-content: center; align-content: center;
-            gap: 12px; padding: 12px; background-color: #333;
-            width: 486px; height: 486px; margin: 30px auto;
-            border-radius: 12px; box-shadow: 0 15px 35px var(--shadow);
-            box-sizing: border-box; transition: background-color 0.8s ease, opacity 0.5s;
-        }
+		.player-area {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
 
-        .sub-grid {
-            display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 46px);
-            gap: 2px; background-color: var(--grid-border); padding: 2px;
-            border-radius: 8px; box-sizing: border-box; width: 146px; height: 146px;
-            transition: background-color 0.5s ease; flex-shrink: 0;
-        }
+		.player-tag-container {
+			width: 486px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin: 5px 0;
+			min-height: 45px;
+		}
 
-        .cell {
-            width: 46px !important; height: 46px !important; background-color: var(--cell-bg);
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 24px; font-weight: bold; border-radius: 4px;
-            box-sizing: border-box; line-height: 0; user-select: none;
-            transition: background 0.2s, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .cell:active { transform: scale(0.85); }
+		.player-tag {
+			font-size: 1.1em;
+			font-weight: bold;
+			padding: 8px 12px;
+			border-radius: 5px;
+			background: rgba(0,0,0,0.05);
+			display: none;
+			flex-grow: 1;
+			text-align: left;
+			box-sizing: border-box;
+			overflow: hidden;
+			white-space: nowrap;
+			transition: all 0.3s ease;
+			border: 2px solid transparent;
+		}
 
-        .highlight { box-shadow: inset 0 0 0 5px #f1c40f; position: relative; z-index: 10; }
+		.highlight-tag {
+			background-color: var(--accent) !important;
+			color: #000 !important;
+			border: 2px solid #000;
+		}
 
-        #menu-online { 
-            background: var(--menu-bg); padding: 20px; border-radius: 15px; 
-            display: inline-block; box-shadow: 0 8px 20px var(--shadow);
-            border: 1px solid var(--grid-border);
-        }
+		#history-wrapper {
+			display: flex;
+			flex-direction: column;
+			align-self: center;
+		}
 
-        .btn-action {
-            padding: 12px 20px; margin: 5px; border: none; border-radius: 8px;
-            cursor: pointer; font-weight: bold; color: white; background: var(--accent);
-        }
+		#move-history-panel {
+			width: 240px;
+			height: 486px;
+			background: var(--menu-bg);
+			border: 1px solid var(--grid-border);
+			border-radius: 12px;
+			display: none; 
+			flex-direction: column;
+			box-shadow: 0 8px 20px var(--shadow);
+		}
 
-        #night-mode-btn {
-            position: absolute; top: 20px; right: 20px;
-            width: 50px; height: 50px; border-radius: 50%;
-            border: 1px solid var(--grid-border); background: var(--menu-bg);
-            font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-        }
+		#history-header {
+			padding: 10px;
+			font-weight: bold;
+			border-bottom: 1px solid var(--grid-border);
+			background: var(--history-bg);
+			border-radius: 12px 12px 0 0;
+		}
 
-        .grid-won-x .cell, .grid-won-o .cell { background-color: transparent !important; }
-        .disconnected { opacity: 0.3; pointer-events: none; }
-    </style>
+		#history-list {
+			flex-grow: 1;
+			overflow-y: auto;
+			padding: 10px;
+			font-family: 'Courier New', monospace;
+			text-align: left;
+			font-size: 0.95em;
+		}
+
+		.move-row {
+			display: flex;
+			align-items: center;
+			padding: 4px 0;
+			border-bottom: 1px solid rgba(128,128,128,0.1);
+			white-space: pre; 
+		}
+
+		.move-num { color: #888; width: 35px; flex-shrink: 0; }
+		.move-val { flex: 1; }
+
+		#settings-menu {
+			position: absolute; top: 80px; right: 20px;
+			background: var(--menu-bg);
+			border: 1px solid var(--grid-border);
+			padding: 15px; border-radius: 12px;
+			box-shadow: 0 8px 20px var(--shadow);
+			display: none; z-index: 100;
+			text-align: left; min-width: 200px;
+		}
+
+		.settings-item { margin-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 10px; }
+		.settings-item:last-child { border-bottom: none; }
+		.settings-item label { display: block; font-size: 0.9em; margin-bottom: 5px; font-weight: bold; }
+
+		.profile-input {
+			width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--grid-border);
+			background: var(--bg-color); color: var(--text-color); box-sizing: border-box;
+		}
+
+		.stats-grid { display: flex; justify-content: space-between; font-size: 0.8em; margin-top: 5px; }
+
+		#settings-toggle-btn {
+			position: absolute; top: 20px; right: 20px;
+			width: 50px; height: 50px; border-radius: 50%;
+			border: 1px solid var(--grid-border); background: var(--menu-bg);
+			font-size: 24px; display: flex; align-items: center; justify-content: center;
+			padding: 0; line-height: 1;
+		}
+
+		#lobby-container {
+			display: none; margin: 20px auto; padding: 25px;
+			background: var(--menu-bg); border-radius: 15px;
+			border: 1px solid var(--grid-border); box-shadow: 0 8px 20px var(--shadow);
+			width: 500px; height: 500px; box-sizing: border-box;
+			position: relative;
+		}
+
+		.btn-exit-global {
+			background: rgba(0,0,0,0.05); border: 2px solid var(--grid-border); font-size: 24px;
+			width: 45px; height: 45px; border-radius: 50%;
+			display: flex; align-items: center; justify-content: center;
+			transition: all 0.2s ease;
+			flex-shrink: 0;
+			padding: 0; line-height: 1;
+		}
+		.btn-exit-global:hover { background: rgba(231, 76, 60, 0.2); transform: scale(1.1); }
+
+		.lobby-names-box {
+			margin: 40px 0; text-align: left; padding: 20px; 
+			background: rgba(0,0,0,0.05); border-radius: 12px;
+			display: flex; flex-direction: column; gap: 15px;
+		}
+
+		.lobby-row-fixed {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			width: 100%;
+			gap: 10px;
+		}
+
+		.scrollable-name-area {
+			overflow: hidden;
+			white-space: nowrap;
+			flex-grow: 1;
+		}
+
+		.preference-tag {
+			flex-shrink: 0;
+			padding: 4px 12px; border-radius: 20px;
+			font-size: 0.85em; font-weight: bold; color: white;
+			display: none;
+			min-width: 60px;
+			text-align: center;
+		}
+
+		#sign-selection { display: none; margin-top: 20px; }
+
+		.main-grid {
+			display: none; flex-wrap: wrap; justify-content: center; align-content: center;
+			gap: 12px; padding: 12px; background-color: #333;
+			width: 486px; height: 486px; margin: 0;
+			border-radius: 12px; box-shadow: 0 15px 35px var(--shadow);
+			box-sizing: border-box; transition: background-color 0.8s ease, opacity 0.5s;
+		}
+
+		/* --- GESTIONE GRIGLIA E HIGHLIGHT --- */
+		.sub-grid {
+			display: grid; 
+			grid-template-columns: repeat(3, 46px); 
+			grid-template-rows: repeat(3, 46px);
+			gap: 2px; 
+			background-color: var(--grid-border); 
+			padding: 2px;
+			border-radius: 8px; 
+			box-sizing: border-box; 
+			width: 146px; 
+			height: 146px;
+			transition: background-color 0.3s ease;
+			flex-shrink: 0;
+			outline: 2px solid transparent; 
+			outline-offset: -2px;
+			position: relative;
+		}
+		
+		.sub-grid.highlight {
+			background-color: var(--accent) !important; /* Trasforma i solchi neri in gialli */
+			outline: 4px solid var(--accent) !important;
+			z-index: 2;
+		}
+
+		.cell {
+			width: 46px; 
+			height: 46px; 
+			background-color: var(--cell-bg) !important; /* Forza l'opacità per coprire il fondo */
+			display: flex; 
+			align-items: center; 
+			justify-content: center;
+			font-size: 24px; 
+			font-weight: bold; 
+			border-radius: 4px;
+			box-sizing: border-box; 
+			line-height: 1; 
+			user-select: none;
+			transition: transform 0.2s, background-color 0.2s;
+		}
+
+		/* --- GESTIONE VITTORIA --- */
+		.grid-won-x, .grid-won-o {
+			background-color: var(--grid-border) !important; 
+			transition: background-color 0.5s ease;
+		}
+
+		/* Solo a vittoria avvenuta le celle diventano trasparenti per mostrare il colore pieno */
+		.grid-won-x .cell, .grid-won-o .cell {
+			background-color: transparent !important;
+		}
+
+		.cell:hover {
+			filter: brightness(0.9);
+			transform: scale(1.05);
+			cursor: pointer;
+			z-index: 5;
+		}
+		
+		#menu-online { 
+			background: var(--menu-bg); padding: 20px; border-radius: 15px; 
+			display: inline-block; box-shadow: 0 8px 20px var(--shadow);
+			border: 1px solid var(--grid-border);
+		}
+
+		.btn-action {
+			padding: 12px 20px; margin: 5px; border: none; border-radius: 8px;
+			font-weight: bold; color: white; background: var(--accent);
+		}
+
+		#home-btn { display: none; background: #e67e22; margin-top: 15px; }
+
+		input[type=range] { width: 100%; cursor: pointer; }
+
+		#disconnect-overlay {
+			display: none;
+			position: fixed;
+			top: 0; left: 0; width: 100%; height: 100%;
+			background: rgba(0,0,0,0.85);
+			color: white;
+			z-index: 9999;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			backdrop-filter: blur(5px);
+		}
+	</style>
 </head>
 <body>
-    <button id="night-mode-btn" onclick="toggleNightMode()">🌙</button>
+    <div id="disconnect-overlay">
+        <h2 style="color: #ff4d4d; font-size: 2em;">⚠️ Connessione Perduta</h2>
+        <p id="disconnect-msg">L'altro giocatore ha lasciato la partita o si è disconnesso.</p>
+        <button class="btn-action" style="background: var(--btn-play); font-size: 1.2em; padding: 15px 30px;" onclick="chiudiLobby()">Torna alla Lobby Principale</button>
+    </div>
+
+    <button id="settings-toggle-btn" onclick="toggleSettings()">⚙️</button>
+    
+    <div id="settings-menu">
+        <div class="settings-item">
+            <label>👤 Profilo</label>
+            <input type="text" id="username-input" class="profile-input" placeholder="Tuo Nome" oninput="saveProfile()">
+            <div class="stats-grid">
+                <span>Vittorie: <b id="stat-win">0</b></span>
+                <span>Sconfitte: <b id="stat-loss">0</b></span>
+            </div>
+        </div>
+        <div class="settings-item">
+            <label>Tema</label>
+            <button class="btn-action" id="night-mode-btn" onclick="toggleNightMode()" style="width:100%; background:#7f8c8d;">🌙 Notte</button>
+        </div>
+        <div class="settings-item">
+            <label>Volume Effetti</label>
+            <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" oninput="updateVolumeLabel(this.value)">
+            <div id="volume-label" style="font-size: 0.8em; text-align: center;">100%</div>
+        </div>
+    </div>
+
     <h1>InfiniTris Online</h1>
 
     <div id="menu-online">
@@ -109,210 +357,412 @@
             <input type="text" id="peer-id-input" placeholder="Incolla ID amico" 
                    style="padding: 12px; border-radius: 8px; border: 1px solid #555; background: var(--cell-bg); color: var(--text-color);">
             <button class="btn-action" style="background: #9b59b6;" onclick="pasteID()">Incolla</button>
-            <button class="btn-action" onclick="connettiAAmico()">Gioca</button>
+            <button class="btn-action" style="background: var(--btn-play);" onclick="connettiAAmico()">Gioca</button>
         </div>
     </div>
 
-    <div id="sign-selection">
-        <h3>Scegli il tuo segno (Host)</h3>
-        <button class="btn-action" style="background: #ff4d4d; padding: 15px 30px; font-size: 1.2em;" onclick="scegliSegno('X')">X</button>
-        <button class="btn-action" style="background: #4d94ff; padding: 15px 30px; font-size: 1.2em;" onclick="scegliSegno('O')">O</button>
-        <button class="btn-action" style="background: #9b59b6; padding: 15px 30px; font-size: 1.2em;" onclick="scegliSegno('random')">🎲 Random</button>
+    <div id="lobby-container">
+        <button class="btn-exit-global" onclick="chiudiLobby()" title="Esci dalla Lobby" style="position: absolute; top: 15px; right: 15px;">🚪</button>
+        <h2 id="lobby-status">Lobby di Gioco</h2>
+        
+        <div class="lobby-names-box">
+            <div class="lobby-row-fixed">
+                <div class="scrollable-name-area">Tu: <b id="my-name-display">...</b></div>
+            </div>
+            <div class="lobby-row-fixed">
+                <div class="scrollable-name-area">Avversario: <b id="enemy-name-display">In attesa...</b></div>
+                <span id="pref-tag" class="preference-tag"></span>
+            </div>
+        </div>
+
+        <div id="sign-selection">
+            <p>Scegli il segno per la partita:</p>
+            <button class="btn-action" style="background: var(--color-x);" onclick="scegliSegno('X')">X</button>
+            <button class="btn-action" style="background: var(--color-o);" onclick="scegliSegno('O')">O</button>
+            <button class="btn-action" style="background: var(--color-rnd);" onclick="scegliSegno('random')">🎲 Random</button>
+        </div>
+
+        <div id="guest-options" style="display: none;">
+            <p>Esprimi una preferenza:</p>
+            <button class="btn-action" style="background: var(--color-x); opacity: 0.8;" onclick="inviaPreferenza('X')">Voglio X</button>
+            <button class="btn-action" style="background: var(--color-o); opacity: 0.8;" onclick="inviaPreferenza('O')">Voglio O</button>
+            <button class="btn-action" style="background: var(--color-rnd); opacity: 0.8;" onclick="inviaPreferenza('random')">🎲 Random</button>
+        </div>
     </div>
 
-    <p id="info-turno" style="font-weight: bold; margin-top: 20px; font-size: 1.2em;">Inizia una nuova sfida!</p>
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <p id="info-turno" style="font-weight: bold; margin-top: 20px; font-size: 1.2em;">Inizia una nuova sfida!</p>
+        <button id="home-btn" class="btn-action" onclick="ritornaInLobby()">Torna alla Lobby 🏠</button>
+    </div>
     
-    <div id="game-board" class="main-grid"></div>
+    <div id="game-container">
+        <div class="player-area">
+            <div class="player-tag-container">
+                <div id="enemy-tag" class="player-tag"></div>
+                <button id="global-exit-btn" class="btn-exit-global" onclick="chiudiLobby()" title="Esci" style="display:none; margin-left: 10px;">🚪</button>
+            </div>
+            <div id="game-board" class="main-grid"></div>
+            <div class="player-tag-container">
+                <div id="my-tag" class="player-tag"></div>
+            </div>
+        </div>
+        <div id="history-wrapper">
+            <div id="move-history-panel">
+                <div id="history-header">MOSSE (SIN)</div>
+                <div id="history-list"></div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // --- BLOCCO REFRESH ---
-        window.onbeforeunload = function() {
-            if (partitaAttiva) return "Se esci o ricarichi, la partita andrà persa. Confermi?";
-        };
+        let profile = JSON.parse(localStorage.getItem('it_profile')) || { name: "Player" + Math.floor(Math.random()*999), wins: 0, losses: 0 };
+        let enemyName = "Avversario", moveCount = 1;
+        let globalVolumeMult = parseFloat(localStorage.getItem('gameVolume')) || 1;
+
+        window.onbeforeunload = function() { if (partitaAttiva) return "Hai una partita in corso!"; };
+
+        function saveProfile() {
+            profile.name = document.getElementById('username-input').value || "Player";
+            localStorage.setItem('it_profile', JSON.stringify(profile));
+            document.getElementById('my-name-display').innerText = profile.name;
+            
+            if(partitaAttiva) {
+                document.getElementById('my-tag').innerText = profile.name + " (" + mioSegno + ")";
+                aggiornaTurnoUI();
+            }
+
+            if (conn && conn.open) {
+                conn.send({ tipo: 'nome-update', name: profile.name });
+            }
+        }
+
+        function updateStatsUI() {
+            document.getElementById('username-input').value = profile.name;
+            document.getElementById('stat-win').innerText = profile.wins;
+            document.getElementById('stat-loss').innerText = profile.losses;
+            document.getElementById('my-name-display').innerText = profile.name;
+        }
+        updateStatsUI();
+
+        function updateVolumeLabel(val) {
+            globalVolumeMult = parseFloat(val);
+            localStorage.setItem('gameVolume', val);
+            document.getElementById('volume-label').innerText = Math.round(val * 100) + "%";
+        }
 
         function applyTheme() {
             const isDark = localStorage.getItem('nightMode') === 'true';
             document.body.classList.toggle('dark-mode', isDark);
-            document.getElementById('night-mode-btn').innerText = isDark ? '☀️' : '🌙';
+            document.getElementById('night-mode-btn').innerText = isDark ? '☀️ Giorno' : '🌙 Notte';
         }
+        applyTheme();
+
         function toggleNightMode() {
+            playClickSound();
             const isDark = !document.body.classList.contains('dark-mode');
             localStorage.setItem('nightMode', isDark);
             applyTheme();
         }
-        applyTheme();
 
-        let myPeerId = "";
-        let partitaAttiva = false;
-        const copyBtn = document.getElementById('copy-btn');
-
-        async function copyMyID() {
-            if (!myPeerId) return;
-            await navigator.clipboard.writeText(myPeerId);
-            copyBtn.innerText = "Copiato! ✅";
-            setTimeout(() => copyBtn.innerText = "Copia il mio ID Partita 📋", 2000);
-        }
-        async function pasteID() {
-            const text = await navigator.clipboard.readText();
-            document.getElementById('peer-id-input').value = text;
+        function toggleSettings() {
+            playClickSound();
+            const menu = document.getElementById('settings-menu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         }
 
-        const board = document.getElementById('game-board');
-        const infoTurno = document.getElementById('info-turno');
-        const menuOnline = document.getElementById('menu-online');
-        const signSelection = document.getElementById('sign-selection');
+        function getAudioCtx() { return new (window.AudioContext || window.webkitAudioContext)(); }
 
+        function playPencilSound() {
+            if (globalVolumeMult === 0) return;
+            const ctx = getAudioCtx();
+            const bufferSize = ctx.sampleRate * 0.12; 
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 700 + Math.random() * 600; 
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime((0.04 + Math.random() * 0.08) * globalVolumeMult, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+            noise.start();
+        }
+
+        function playClickSound() {
+            if (globalVolumeMult === 0) return;
+            const ctx = getAudioCtx();
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(400, ctx.currentTime);
+            g.gain.setValueAtTime(0.1 * globalVolumeMult, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+            osc.connect(g); g.connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime + 0.05);
+        }
+
+        function playWinSounds() {
+            if (globalVolumeMult === 0) return;
+            const ctx = getAudioCtx();
+            const noise = ctx.createBufferSource();
+            const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+            for (let i = 0; i < buffer.length; i++) buffer.getChannelData(0)[i] = Math.random() * 2 - 1;
+            noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'highpass'; filter.frequency.value = 5000;
+            const gainN = ctx.createGain();
+            gainN.gain.setValueAtTime(0.05 * globalVolumeMult, ctx.currentTime);
+            gainN.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+            noise.connect(filter); filter.connect(gainN); gainN.connect(ctx.destination);
+            noise.start();
+            for(let i=0; i<30; i++) {
+                setTimeout(() => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(100 + Math.random()*200, ctx.currentTime);
+                    g.gain.setValueAtTime(0.02 * globalVolumeMult, ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+                    osc.connect(g); g.connect(ctx.destination);
+                    osc.start(); osc.stop(ctx.currentTime + 0.1);
+                }, Math.random() * 1500);
+            }
+        }
+
+        let myPeerId = "", partitaAttiva = false;
         let peer = new Peer(), conn, mioSegno = '', turno = 'X', grigliaObbligatoria = -1;
         let vincitoriGriglie = Array(9).fill(null);
         const COMBINAZIONI_VINCENTI = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 
+        const board = document.getElementById('game-board');
+        const infoTurno = document.getElementById('info-turno');
+        const menuOnline = document.getElementById('menu-online');
+        const lobbyContainer = document.getElementById('lobby-container');
+        const signSelection = document.getElementById('sign-selection');
+        const guestOptions = document.getElementById('guest-options');
+        const historyList = document.getElementById('history-list');
+        const homeBtn = document.getElementById('home-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const globalExitBtn = document.getElementById('global-exit-btn');
+        const disconnectOverlay = document.getElementById('disconnect-overlay');
+
         peer.on('open', (id) => { myPeerId = id; copyBtn.innerText = "Copia il mio ID Partita 📋"; });
+        peer.on('connection', (c) => { if (conn) { c.close(); return; } conn = c; mioSegno = 'HOST'; setupRicezione(); });
         
-        peer.on('connection', (c) => { 
-            if (partitaAttiva) {
-                c.on('open', () => c.send({ tipo: 'errore', msg: 'Partita già in corso!' }));
-                setTimeout(() => c.close(), 500);
-                return;
-            }
-            conn = c; 
-            mioSegno = 'HOST';
-            setupRicezione(); 
+        peer.on('error', (err) => {
+            console.error("PeerJS Error:", err);
+            if(partitaAttiva) gestisciDisconnessione();
         });
 
         function connettiAAmico() {
-            conn = peer.connect(document.getElementById('peer-id-input').value);
+            playClickSound();
+            const idInput = document.getElementById('peer-id-input').value;
+            if(!idInput) return;
+            conn = peer.connect(idInput);
             mioSegno = 'GUEST';
             setupRicezione();
         }
 
         function setupRicezione() {
             conn.on('open', () => { 
-                if (mioSegno === 'HOST') {
-                    menuOnline.style.display = 'none';
-                    signSelection.style.display = 'inline-block';
-                    infoTurno.innerText = "Scegli il segno per iniziare la partita";
-                } else {
-                    menuOnline.style.display = 'none';
-                    infoTurno.innerText = "L'Host sta scegliendo i segni...";
-                }
+                menuOnline.style.display = 'none';
+                lobbyContainer.style.display = 'block';
+                conn.send({ tipo: 'lobby-join', name: profile.name });
+                if (mioSegno === 'HOST') signSelection.style.display = 'block';
+                else guestOptions.style.display = 'block';
             });
 
             conn.on('data', (data) => {
-                if (data.tipo === 'start') {
-                    mioSegno = data.segno;
-                    avviaPartitaUI();
-                } else if (data.tipo === 'errore') {
-                    alert(data.msg);
-                    location.reload();
-                } else {
-                    eseguiMossaLogica(data.g, data.c);
+                if (data.tipo === 'lobby-join' || data.tipo === 'lobby-ack' || data.tipo === 'nome-update') {
+                    enemyName = data.name;
+                    document.getElementById('enemy-name-display').innerText = enemyName;
+                    if(partitaAttiva) {
+                        document.getElementById('enemy-tag').innerText = enemyName + " (" + (mioSegno === 'X' ? 'O' : 'X') + ")";
+                        aggiornaTurnoUI();
+                    }
+                    if(data.tipo === 'lobby-join' && mioSegno === 'HOST') conn.send({ tipo: 'lobby-ack', name: profile.name });
                 }
+                else if (data.tipo === 'pref') {
+                    const tag = document.getElementById('pref-tag');
+                    tag.style.display = 'inline-block';
+                    tag.innerText = data.segno;
+                    tag.style.background = (data.segno === 'X') ? 'var(--color-x)' : (data.segno === 'O' ? 'var(--color-o)' : 'var(--color-rnd)');
+                }
+                else if (data.tipo === 'start') { mioSegno = data.segno; avviaPartitaUI(); }
+                else if (data.tipo === 'mossa') { eseguiMossaLogica(data.g, data.c); }
+                else if (data.tipo === 'reset-lobby') { resetPerNuovaPartita(); }
             });
 
-            // --- CONTROLLO DISCONNESSIONE ---
-            conn.on('close', () => {
-                partitaAttiva = false;
-                infoTurno.innerHTML = "<span style='color:#e74c3c'>⚠️ AVVERSARIO DISCONNESSO! Partita terminata.</span>";
-                board.classList.add('disconnected');
-            });
+            conn.on('close', () => { gestisciDisconnessione(); });
+            conn.on('error', () => { gestisciDisconnessione(); });
         }
 
+        function gestisciDisconnessione() {
+            if (!partitaAttiva && lobbyContainer.style.display === 'none') return;
+            partitaAttiva = false;
+            if(conn) { conn.close(); conn = null; }
+            disconnectOverlay.style.display = 'flex';
+        }
+
+        function inviaPreferenza(s) { playClickSound(); if(conn) conn.send({ tipo: 'pref', segno: s }); }
+        
         function scegliSegno(scelta) {
-            if (scelta === 'random') {
-                mioSegno = Math.random() < 0.5 ? 'X' : 'O';
-            } else {
-                mioSegno = scelta;
-            }
-            const segnoGuest = (mioSegno === 'X') ? 'O' : 'X';
-            conn.send({ tipo: 'start', segno: segnoGuest });
+            playClickSound();
+            let scelto = scelta === 'random' ? (Math.random() < 0.5 ? 'X' : 'O') : scelta;
+            mioSegno = scelto;
+            if(conn) conn.send({ tipo: 'start', segno: scelto === 'X' ? 'O' : 'X' });
             avviaPartitaUI();
         }
 
         function avviaPartitaUI() {
             partitaAttiva = true;
-            signSelection.style.display = 'none';
-            menuOnline.style.display = 'none';
+            lobbyContainer.style.display = 'none';
             board.style.display = 'flex';
-            infoTurno.innerText = (turno === mioSegno) ? `Tocca a te (${mioSegno})` : `Aspetta la mossa di ${turno}`;
-            board.style.backgroundColor = 'rgba(231, 76, 60, 0.25)';
-            aggiornaEvidenziazione();
+            globalExitBtn.style.display = 'flex';
+            document.querySelectorAll('.player-tag').forEach(t => t.style.display = 'block');
+            document.getElementById('my-tag').innerText = profile.name + " (" + mioSegno + ")";
+            document.getElementById('enemy-tag').innerText = enemyName + " (" + (mioSegno === 'X' ? 'O' : 'X') + ")";
+            document.getElementById('move-history-panel').style.display = 'flex';
+            aggiornaTurnoUI(); aggiornaEvidenziazione();
         }
 
-        for (let i = 0; i < 9; i++) {
-            const subGrid = document.createElement('div');
-            subGrid.className = 'sub-grid';
-            for (let j = 0; j < 9; j++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.onclick = () => {
-                    if (partitaAttiva && mioSegno !== 'HOST' && mioSegno !== 'GUEST' && turno === mioSegno && eseguiMossaLogica(i, j)) {
-                        conn.send({ g: i, c: j });
-                    }
-                };
-                subGrid.appendChild(cell);
-            }
-            board.appendChild(subGrid);
+        function chiudiLobby() { 
+            playClickSound(); 
+            location.reload(); 
         }
+
+        function creaGriglia() {
+            board.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const subGrid = document.createElement('div');
+                subGrid.className = 'sub-grid';
+                for (let j = 0; j < 9; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.onclick = () => {
+                        if (partitaAttiva && turno === mioSegno && eseguiMossaLogica(i, j)) {
+                            if(conn) conn.send({ tipo: 'mossa', g: i, c: j });
+                        }
+                    };
+                    subGrid.appendChild(cell);
+                }
+                board.appendChild(subGrid);
+            }
+        }
+        creaGriglia();
 
         function eseguiMossaLogica(gIdx, cIdx) {
             const subGrid = board.children[gIdx];
             const cella = subGrid.children[cIdx];
-
             if (cella.innerText === '' && (grigliaObbligatoria === -1 || grigliaObbligatoria === gIdx) && vincitoriGriglie[gIdx] === null) {
+                let m = (grigliaObbligatoria === -1) ? "+" : "";
+                playPencilSound();
                 cella.innerText = turno;
-                cella.style.color = (turno === 'X') ? '#ff4d4d' : '#4d94ff';
-                cella.style.transform = "scale(1.2)";
-                setTimeout(() => cella.style.transform = "scale(1)", 100);
-
+                cella.style.color = (turno === 'X') ? 'var(--color-x)' : 'var(--color-o)';
                 const segni = Array.from(subGrid.children).map(c => c.innerText);
                 const win = controllaVincitore(segni);
-                
                 if (win) {
                     vincitoriGriglie[gIdx] = win;
                     subGrid.classList.add(win === 'X' ? 'grid-won-x' : 'grid-won-o');
                     subGrid.style.backgroundColor = (win === 'X') ? 'rgba(231, 76, 60, 0.4)' : 'rgba(52, 152, 219, 0.4)';
-                    
-                    const vincitoreFinale = controllaVincitore(vincitoriGriglie);
-                    if (vincitoreFinale) {
-                        partitaAttiva = false;
-                        lanciaCoriandoli();
-                        setTimeout(() => { alert("VITTORIA FINALE PER " + vincitoreFinale); location.reload(); }, 1500);
+                    m = "*";
+                    const finale = controllaVincitore(vincitoriGriglie);
+                    if (finale) {
+                        registraNotazione(gIdx, cIdx, "#");
+                        gestisciFinePartita(finale);
+                        return true;
                     }
-                } else if (segni.every(s => s !== '')) {
-                    vincitoriGriglie[gIdx] = 'Pareggio';
-                    subGrid.style.backgroundColor = '#555';
-                }
-
+                } else if (segni.every(s => s !== '')) { vincitoriGriglie[gIdx] = 'Pareggio'; m = "="; }
+                registraNotazione(gIdx, cIdx, m);
                 grigliaObbligatoria = (vincitoriGriglie[cIdx] !== null || Array.from(board.children[cIdx].children).every(s => s.innerText !== '')) ? -1 : cIdx;
                 turno = (turno === 'X') ? 'O' : 'X';
-                infoTurno.innerText = "Turno: " + turno + (turno === mioSegno ? " (TU)" : " (LUI)");
-                board.style.backgroundColor = (turno === 'X') ? 'rgba(231, 76, 60, 0.25)' : 'rgba(52, 152, 219, 0.25)';
-
-                aggiornaEvidenziazione();
+                aggiornaTurnoUI(); aggiornaEvidenziazione();
                 return true;
             }
             return false;
         }
 
-        function lanciaCoriandoli() {
-            const durata = 3 * 1000;
-            const fine = Date.now() + durata;
-            (function frame() {
-                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff4d4d', '#4d94ff', '#f1c40f'] });
-                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff4d4d', '#4d94ff', '#f1c40f'] });
-                if (Date.now() < fine) requestAnimationFrame(frame);
-            }());
+        function registraNotazione(g, c, speciale) {
+            let sin = `G${g+1}c${c+1}${speciale.padEnd(1, ' ')}`;
+            if (turno === 'X') {
+                const row = document.createElement('div'); row.className = 'move-row';
+                let displayNum = moveCount < 10 ? ` ${moveCount}.` : `${moveCount}.`;
+                row.innerHTML = `<span class="move-num">${displayNum}</span><span class="move-val">${sin}</span><span id="move-o-${moveCount}" class="move-val"></span>`;
+                historyList.appendChild(row);
+            } else {
+                const target = document.getElementById(`move-o-${moveCount}`);
+                if(target) target.innerText = sin;
+                moveCount++;
+            }
+            historyList.scrollTop = historyList.scrollHeight;
+        }
+
+        function aggiornaTurnoUI() {
+            if(!partitaAttiva) return;
+            const nomeCorrente = (turno === mioSegno) ? profile.name + " (TU)" : enemyName;
+            infoTurno.innerText = "Turno: " + turno + " - " + nomeCorrente;
+            
+            const myTag = document.getElementById('my-tag');
+            const enemyTag = document.getElementById('enemy-tag');
+            
+            if (turno === mioSegno) {
+                myTag.classList.add('highlight-tag');
+                enemyTag.classList.remove('highlight-tag');
+            } else {
+                enemyTag.classList.add('highlight-tag');
+                myTag.classList.remove('highlight-tag');
+            }
+
+            board.style.backgroundColor = (turno === 'X') ? 'rgba(231, 76, 60, 0.25)' : 'rgba(52, 152, 219, 0.25)';
         }
 
         function aggiornaEvidenziazione() {
             Array.from(board.children).forEach((g, i) => {
                 g.classList.remove('highlight');
-                if (grigliaObbligatoria === -1) {
-                    if (vincitoriGriglie[i] === null) g.classList.add('highlight');
-                } else if (i === grigliaObbligatoria) {
-                    g.classList.add('highlight');
+                if (partitaAttiva) {
+                    if (grigliaObbligatoria === -1) { if (vincitoriGriglie[i] === null) g.classList.add('highlight'); }
+                    else if (i === grigliaObbligatoria) { g.classList.add('highlight'); }
                 }
             });
+        }
+
+        function gestisciFinePartita(vincitore) {
+            partitaAttiva = false;
+            homeBtn.style.display = 'block';
+            aggiornaEvidenziazione();
+            document.getElementById('my-tag').classList.remove('highlight-tag');
+            document.getElementById('enemy-tag').classList.remove('highlight-tag');
+
+            if (vincitore === mioSegno) {
+                profile.wins++; lanciaCoriandoli(); playWinSounds();
+                infoTurno.innerHTML = `<span style="color:var(--accent)">🏆 VITTORIA PER ${profile.name}!</span>`;
+            } else if (vincitore === 'Pareggio') {
+                infoTurno.innerText = "PARTITA FINITA IN PAREGGIO";
+            } else {
+                profile.losses++;
+                infoTurno.innerHTML = `<span style="color:#e74c3c">🚩 VITTORIA PER ${enemyName}</span>`;
+            }
+            saveProfile(); updateStatsUI();
+        }
+
+        function ritornaInLobby() { playClickSound(); if(conn) conn.send({ tipo: 'reset-lobby' }); resetPerNuovaPartita(); }
+
+        function resetPerNuovaPartita() {
+            partitaAttiva = false; vincitoriGriglie.fill(null); grigliaObbligatoria = -1; turno = 'X'; moveCount = 1;
+            board.innerHTML = ''; board.style.display = 'none';
+            document.querySelectorAll('.player-tag').forEach(t => {
+                t.style.display = 'none';
+                t.classList.remove('highlight-tag');
+            });
+            document.getElementById('move-history-panel').style.display = 'none';
+            homeBtn.style.display = 'none'; globalExitBtn.style.display = 'none';
+            infoTurno.innerText = "Scegli il segno per ricominciare!";
+            lobbyContainer.style.display = 'block';
+            historyList.innerHTML = '';
+            document.getElementById('pref-tag').style.display = 'none';
+            creaGriglia();
         }
 
         function controllaVincitore(celle) {
@@ -321,6 +771,18 @@
                 if (celle[a] && celle[a] === celle[b] && celle[a] === celle[c]) return celle[a];
             }
             return null;
+        }
+
+        async function copyMyID() { if (!myPeerId) return; playClickSound(); await navigator.clipboard.writeText(myPeerId); copyBtn.innerText = "Copiato! ✅"; setTimeout(() => copyBtn.innerText = "Copia il mio ID Partita 📋", 2000); }
+        async function pasteID() { playClickSound(); const text = await navigator.clipboard.readText(); document.getElementById('peer-id-input').value = text; }
+
+        function lanciaCoriandoli() {
+            const fine = Date.now() + 3000;
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff4d4d', '#4d94ff', '#f1c40f'] });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff4d4d', '#4d94ff', '#f1c40f'] });
+                if (Date.now() < fine) requestAnimationFrame(frame);
+            }());
         }
     </script>
 </body>
