@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <title>InfiniTris Online - Victory Edition</title>
+    <style>
+        :root {
+            --bg-color: #f0f0f0;
+            --text-color: #333;
+            --menu-bg: #ffffff;
+            --cell-bg: #ffffff;
+            --grid-border: #000000;
+            --accent: #27ae60;
+            --shadow: rgba(0,0,0,0.2);
+        }
+
+        .dark-mode {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --menu-bg: #1e1e1e;
+            --cell-bg: #2d2d2d;
+            --grid-border: #444444;
+            --shadow: rgba(0,0,0,0.6);
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            text-align: center; 
+            background-color: var(--bg-color); 
+            color: var(--text-color);
+            margin: 0; padding: 20px; 
+            transition: background 0.5s, color 0.5s;
+        }
+
+        .btn-action, #night-mode-btn {
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
+        }
+        .btn-action:active { transform: scale(0.95); }
+
+        .main-grid {
+            display: flex; flex-wrap: wrap; justify-content: center; align-content: center;
+            gap: 12px; padding: 12px; background-color: #333;
+            width: 486px; height: 486px; margin: 30px auto;
+            border-radius: 12px; box-shadow: 0 15px 35px var(--shadow);
+            box-sizing: border-box; transition: background-color 0.8s ease;
+        }
+
+        .sub-grid {
+            display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 46px);
+            gap: 2px; background-color: var(--grid-border); padding: 2px;
+            border-radius: 8px; box-sizing: border-box; width: 146px; height: 146px;
+            transition: background-color 0.5s ease; flex-shrink: 0;
+        }
+
+        .cell {
+            width: 46px !important; height: 46px !important; background-color: var(--cell-bg);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 24px; font-weight: bold; border-radius: 4px;
+            box-sizing: border-box; line-height: 0; user-select: none;
+            transition: background 0.2s, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .cell:active { transform: scale(0.85); }
+
+        .highlight { box-shadow: inset 0 0 0 5px #f1c40f; position: relative; z-index: 10; }
+
+        #menu-online { 
+            background: var(--menu-bg); padding: 20px; border-radius: 15px; 
+            display: inline-block; box-shadow: 0 8px 20px var(--shadow);
+            border: 1px solid var(--grid-border);
+        }
+
+        .btn-action {
+            padding: 12px 20px; margin: 5px; border: none; border-radius: 8px;
+            cursor: pointer; font-weight: bold; color: white; background: var(--accent);
+        }
+
+        #night-mode-btn {
+            position: absolute; top: 20px; right: 20px;
+            width: 50px; height: 50px; border-radius: 50%;
+            border: 1px solid var(--grid-border); background: var(--menu-bg);
+            font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+
+        .grid-won-x .cell, .grid-won-o .cell { background-color: transparent !important; }
+    </style>
+</head>
+<body>
+    <button id="night-mode-btn" onclick="toggleNightMode()">🌙</button>
+    <h1>InfiniTris Online</h1>
+    <div id="menu-online">
+        <div style="margin-bottom: 15px;">
+            <button id="copy-btn" class="btn-action" style="background: #3498db;" onclick="copyMyID()">Caricamento ID...</button>
+        </div>
+        <div>
+            <input type="text" id="peer-id-input" placeholder="Incolla ID amico" 
+                   style="padding: 12px; border-radius: 8px; border: 1px solid #555; background: var(--cell-bg); color: var(--text-color);">
+            <button class="btn-action" style="background: #9b59b6;" onclick="pasteID()">Incolla</button>
+            <button class="btn-action" onclick="connettiAAmico()">Gioca</button>
+        </div>
+    </div>
+    <p id="info-turno" style="font-weight: bold; margin-top: 20px; font-size: 1.2em;">Inizia una nuova sfida!</p>
+    <div id="game-board" class="main-grid"></div>
+
+    <script>
+        function applyTheme() {
+            const isDark = localStorage.getItem('nightMode') === 'true';
+            document.body.classList.toggle('dark-mode', isDark);
+            document.getElementById('night-mode-btn').innerText = isDark ? '☀️' : '🌙';
+        }
+        function toggleNightMode() {
+            const isDark = !document.body.classList.contains('dark-mode');
+            localStorage.setItem('nightMode', isDark);
+            applyTheme();
+        }
+        applyTheme();
+
+        let myPeerId = "";
+        const copyBtn = document.getElementById('copy-btn');
+        async function copyMyID() {
+            if (!myPeerId) return;
+            await navigator.clipboard.writeText(myPeerId);
+            copyBtn.innerText = "Copiato! ✅";
+            setTimeout(() => copyBtn.innerText = "Copia il mio ID Partita 📋", 2000);
+        }
+        async function pasteID() {
+            const text = await navigator.clipboard.readText();
+            document.getElementById('peer-id-input').value = text;
+        }
+
+        const board = document.getElementById('game-board');
+        const infoTurno = document.getElementById('info-turno');
+        let peer = new Peer(), conn, mioSegno = '', turno = 'X', grigliaObbligatoria = -1;
+        let vincitoriGriglie = Array(9).fill(null);
+        const COMBINAZIONI_VINCENTI = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+        peer.on('open', (id) => { myPeerId = id; copyBtn.innerText = "Copia il mio ID Partita 📋"; });
+        peer.on('connection', (c) => { conn = c; mioSegno = 'X'; setupRicezione(); });
+
+        function connettiAAmico() {
+            conn = peer.connect(document.getElementById('peer-id-input').value);
+            mioSegno = 'O'; setupRicezione();
+        }
+
+        function setupRicezione() {
+            conn.on('open', () => { 
+                infoTurno.innerText = (mioSegno === 'X') ? "Tocca a te (X)" : "Aspetta la mossa di X";
+                board.style.backgroundColor = 'rgba(231, 76, 60, 0.25)';
+            });
+            conn.on('data', (data) => eseguiMossaLogica(data.g, data.c));
+        }
+
+        for (let i = 0; i < 9; i++) {
+            const subGrid = document.createElement('div');
+            subGrid.className = 'sub-grid';
+            for (let j = 0; j < 9; j++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.onclick = () => {
+                    if (conn && turno === mioSegno && eseguiMossaLogica(i, j)) conn.send({ g: i, c: j });
+                };
+                subGrid.appendChild(cell);
+            }
+            board.appendChild(subGrid);
+        }
+
+        function eseguiMossaLogica(gIdx, cIdx) {
+            const subGrid = board.children[gIdx];
+            const cella = subGrid.children[cIdx];
+
+            if (cella.innerText === '' && (grigliaObbligatoria === -1 || grigliaObbligatoria === gIdx) && vincitoriGriglie[gIdx] === null) {
+                cella.innerText = turno;
+                cella.style.color = (turno === 'X') ? '#ff4d4d' : '#4d94ff';
+                cella.style.transform = "scale(1.2)";
+                setTimeout(() => cella.style.transform = "scale(1)", 100);
+
+                const segni = Array.from(subGrid.children).map(c => c.innerText);
+                const win = controllaVincitore(segni);
+                
+                if (win) {
+                    vincitoriGriglie[gIdx] = win;
+                    subGrid.classList.add(win === 'X' ? 'grid-won-x' : 'grid-won-o');
+                    subGrid.style.backgroundColor = (win === 'X') ? 'rgba(231, 76, 60, 0.4)' : 'rgba(52, 152, 219, 0.4)';
+                    
+                    const vincitoreFinale = controllaVincitore(vincitoriGriglie);
+                    if (vincitoreFinale) {
+                        lanciaCoriandoli(); // SCATENA LA FESTA!
+                        setTimeout(() => { alert("VITTORIA FINALE PER " + vincitoreFinale); location.reload(); }, 1500);
+                    }
+                } else if (segni.every(s => s !== '')) {
+                    vincitoriGriglie[gIdx] = 'Pareggio';
+                    subGrid.style.backgroundColor = '#555';
+                }
+
+                grigliaObbligatoria = (vincitoriGriglie[cIdx] !== null || Array.from(board.children[cIdx].children).every(s => s.innerText !== '')) ? -1 : cIdx;
+                turno = (turno === 'X') ? 'O' : 'X';
+                infoTurno.innerText = "Turno: " + turno + (turno === mioSegno ? " (TU)" : " (LUI)");
+                board.style.backgroundColor = (turno === 'X') ? 'rgba(231, 76, 60, 0.25)' : 'rgba(52, 152, 219, 0.25)';
+
+                aggiornaEvidenziazione();
+                return true;
+            }
+            return false;
+        }
+
+        function lanciaCoriandoli() {
+            const durata = 3 * 1000;
+            const fine = Date.now() + durata;
+
+            (function frame() {
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#ff4d4d', '#4d94ff', '#f1c40f']
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#ff4d4d', '#4d94ff', '#f1c40f']
+                });
+
+                if (Date.now() < fine) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+
+        function aggiornaEvidenziazione() {
+            Array.from(board.children).forEach((g, i) => {
+                g.classList.remove('highlight');
+                if (grigliaObbligatoria === -1) {
+                    if (vincitoriGriglie[i] === null) g.classList.add('highlight');
+                } else if (i === grigliaObbligatoria) {
+                    g.classList.add('highlight');
+                }
+            });
+        }
+
+        function controllaVincitore(celle) {
+            for (let comb of COMBINAZIONI_VINCENTI) {
+                const [a, b, c] = comb;
+                if (celle[a] && celle[a] === celle[b] && celle[a] === celle[c]) return celle[a];
+            }
+            return null;
+        }
+    </script>
+</body>
+</html>
