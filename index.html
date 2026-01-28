@@ -38,7 +38,6 @@
         }
         .btn-action:active { transform: scale(0.95); }
 
-        /* Nuovo Menu Selezione Segni */
         #sign-selection {
             display: none;
             margin-top: 20px;
@@ -50,12 +49,12 @@
         }
 
         .main-grid {
-            display: none; /* Nascosta finché non si sceglie il segno */
+            display: none; 
             flex-wrap: wrap; justify-content: center; align-content: center;
             gap: 12px; padding: 12px; background-color: #333;
             width: 486px; height: 486px; margin: 30px auto;
             border-radius: 12px; box-shadow: 0 15px 35px var(--shadow);
-            box-sizing: border-box; transition: background-color 0.8s ease;
+            box-sizing: border-box; transition: background-color 0.8s ease, opacity 0.5s;
         }
 
         .sub-grid {
@@ -95,6 +94,7 @@
         }
 
         .grid-won-x .cell, .grid-won-o .cell { background-color: transparent !important; }
+        .disconnected { opacity: 0.3; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -125,6 +125,11 @@
     <div id="game-board" class="main-grid"></div>
 
     <script>
+        // --- BLOCCO REFRESH ---
+        window.onbeforeunload = function() {
+            if (partitaAttiva) return "Se esci o ricarichi, la partita andrà persa. Confermi?";
+        };
+
         function applyTheme() {
             const isDark = localStorage.getItem('nightMode') === 'true';
             document.body.classList.toggle('dark-mode', isDark);
@@ -138,7 +143,9 @@
         applyTheme();
 
         let myPeerId = "";
+        let partitaAttiva = false;
         const copyBtn = document.getElementById('copy-btn');
+
         async function copyMyID() {
             if (!myPeerId) return;
             await navigator.clipboard.writeText(myPeerId);
@@ -162,14 +169,19 @@
         peer.on('open', (id) => { myPeerId = id; copyBtn.innerText = "Copia il mio ID Partita 📋"; });
         
         peer.on('connection', (c) => { 
+            if (partitaAttiva) {
+                c.on('open', () => c.send({ tipo: 'errore', msg: 'Partita già in corso!' }));
+                setTimeout(() => c.close(), 500);
+                return;
+            }
             conn = c; 
-            mioSegno = 'HOST'; // Ruolo temporaneo
+            mioSegno = 'HOST';
             setupRicezione(); 
         });
 
         function connettiAAmico() {
             conn = peer.connect(document.getElementById('peer-id-input').value);
-            mioSegno = 'GUEST'; // Ruolo temporaneo
+            mioSegno = 'GUEST';
             setupRicezione();
         }
 
@@ -189,9 +201,19 @@
                 if (data.tipo === 'start') {
                     mioSegno = data.segno;
                     avviaPartitaUI();
+                } else if (data.tipo === 'errore') {
+                    alert(data.msg);
+                    location.reload();
                 } else {
                     eseguiMossaLogica(data.g, data.c);
                 }
+            });
+
+            // --- CONTROLLO DISCONNESSIONE ---
+            conn.on('close', () => {
+                partitaAttiva = false;
+                infoTurno.innerHTML = "<span style='color:#e74c3c'>⚠️ AVVERSARIO DISCONNESSO! Partita terminata.</span>";
+                board.classList.add('disconnected');
             });
         }
 
@@ -201,13 +223,13 @@
             } else {
                 mioSegno = scelta;
             }
-            
             const segnoGuest = (mioSegno === 'X') ? 'O' : 'X';
             conn.send({ tipo: 'start', segno: segnoGuest });
             avviaPartitaUI();
         }
 
         function avviaPartitaUI() {
+            partitaAttiva = true;
             signSelection.style.display = 'none';
             menuOnline.style.display = 'none';
             board.style.display = 'flex';
@@ -216,7 +238,6 @@
             aggiornaEvidenziazione();
         }
 
-        // Creazione Griglia
         for (let i = 0; i < 9; i++) {
             const subGrid = document.createElement('div');
             subGrid.className = 'sub-grid';
@@ -224,7 +245,7 @@
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.onclick = () => {
-                    if (conn && mioSegno !== 'HOST' && mioSegno !== 'GUEST' && turno === mioSegno && eseguiMossaLogica(i, j)) {
+                    if (partitaAttiva && mioSegno !== 'HOST' && mioSegno !== 'GUEST' && turno === mioSegno && eseguiMossaLogica(i, j)) {
                         conn.send({ g: i, c: j });
                     }
                 };
@@ -253,6 +274,7 @@
                     
                     const vincitoreFinale = controllaVincitore(vincitoriGriglie);
                     if (vincitoreFinale) {
+                        partitaAttiva = false;
                         lanciaCoriandoli();
                         setTimeout(() => { alert("VITTORIA FINALE PER " + vincitoreFinale); location.reload(); }, 1500);
                     }
