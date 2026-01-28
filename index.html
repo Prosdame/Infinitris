@@ -38,8 +38,20 @@
         }
         .btn-action:active { transform: scale(0.95); }
 
+        /* Nuovo Menu Selezione Segni */
+        #sign-selection {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--menu-bg);
+            border-radius: 15px;
+            border: 1px solid var(--grid-border);
+            box-shadow: 0 8px 20px var(--shadow);
+        }
+
         .main-grid {
-            display: flex; flex-wrap: wrap; justify-content: center; align-content: center;
+            display: none; /* Nascosta finché non si sceglie il segno */
+            flex-wrap: wrap; justify-content: center; align-content: center;
             gap: 12px; padding: 12px; background-color: #333;
             width: 486px; height: 486px; margin: 30px auto;
             border-radius: 12px; box-shadow: 0 15px 35px var(--shadow);
@@ -88,6 +100,7 @@
 <body>
     <button id="night-mode-btn" onclick="toggleNightMode()">🌙</button>
     <h1>InfiniTris Online</h1>
+
     <div id="menu-online">
         <div style="margin-bottom: 15px;">
             <button id="copy-btn" class="btn-action" style="background: #3498db;" onclick="copyMyID()">Caricamento ID...</button>
@@ -99,7 +112,16 @@
             <button class="btn-action" onclick="connettiAAmico()">Gioca</button>
         </div>
     </div>
+
+    <div id="sign-selection">
+        <h3>Scegli il tuo segno (Host)</h3>
+        <button class="btn-action" style="background: #ff4d4d; padding: 15px 30px; font-size: 1.2em;" onclick="scegliSegno('X')">X</button>
+        <button class="btn-action" style="background: #4d94ff; padding: 15px 30px; font-size: 1.2em;" onclick="scegliSegno('O')">O</button>
+        <button class="btn-action" style="background: #9b59b6; padding: 15px 30px; font-size: 1.2em;" onclick="scegliSegno('random')">🎲 Random</button>
+    </div>
+
     <p id="info-turno" style="font-weight: bold; margin-top: 20px; font-size: 1.2em;">Inizia una nuova sfida!</p>
+    
     <div id="game-board" class="main-grid"></div>
 
     <script>
@@ -130,26 +152,71 @@
 
         const board = document.getElementById('game-board');
         const infoTurno = document.getElementById('info-turno');
+        const menuOnline = document.getElementById('menu-online');
+        const signSelection = document.getElementById('sign-selection');
+
         let peer = new Peer(), conn, mioSegno = '', turno = 'X', grigliaObbligatoria = -1;
         let vincitoriGriglie = Array(9).fill(null);
         const COMBINAZIONI_VINCENTI = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 
         peer.on('open', (id) => { myPeerId = id; copyBtn.innerText = "Copia il mio ID Partita 📋"; });
-        peer.on('connection', (c) => { conn = c; mioSegno = 'X'; setupRicezione(); });
+        
+        peer.on('connection', (c) => { 
+            conn = c; 
+            mioSegno = 'HOST'; // Ruolo temporaneo
+            setupRicezione(); 
+        });
 
         function connettiAAmico() {
             conn = peer.connect(document.getElementById('peer-id-input').value);
-            mioSegno = 'O'; setupRicezione();
+            mioSegno = 'GUEST'; // Ruolo temporaneo
+            setupRicezione();
         }
 
         function setupRicezione() {
             conn.on('open', () => { 
-                infoTurno.innerText = (mioSegno === 'X') ? "Tocca a te (X)" : "Aspetta la mossa di X";
-                board.style.backgroundColor = 'rgba(231, 76, 60, 0.25)';
+                if (mioSegno === 'HOST') {
+                    menuOnline.style.display = 'none';
+                    signSelection.style.display = 'inline-block';
+                    infoTurno.innerText = "Scegli il segno per iniziare la partita";
+                } else {
+                    menuOnline.style.display = 'none';
+                    infoTurno.innerText = "L'Host sta scegliendo i segni...";
+                }
             });
-            conn.on('data', (data) => eseguiMossaLogica(data.g, data.c));
+
+            conn.on('data', (data) => {
+                if (data.tipo === 'start') {
+                    mioSegno = data.segno;
+                    avviaPartitaUI();
+                } else {
+                    eseguiMossaLogica(data.g, data.c);
+                }
+            });
         }
 
+        function scegliSegno(scelta) {
+            if (scelta === 'random') {
+                mioSegno = Math.random() < 0.5 ? 'X' : 'O';
+            } else {
+                mioSegno = scelta;
+            }
+            
+            const segnoGuest = (mioSegno === 'X') ? 'O' : 'X';
+            conn.send({ tipo: 'start', segno: segnoGuest });
+            avviaPartitaUI();
+        }
+
+        function avviaPartitaUI() {
+            signSelection.style.display = 'none';
+            menuOnline.style.display = 'none';
+            board.style.display = 'flex';
+            infoTurno.innerText = (turno === mioSegno) ? `Tocca a te (${mioSegno})` : `Aspetta la mossa di ${turno}`;
+            board.style.backgroundColor = 'rgba(231, 76, 60, 0.25)';
+            aggiornaEvidenziazione();
+        }
+
+        // Creazione Griglia
         for (let i = 0; i < 9; i++) {
             const subGrid = document.createElement('div');
             subGrid.className = 'sub-grid';
@@ -157,7 +224,9 @@
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.onclick = () => {
-                    if (conn && turno === mioSegno && eseguiMossaLogica(i, j)) conn.send({ g: i, c: j });
+                    if (conn && mioSegno !== 'HOST' && mioSegno !== 'GUEST' && turno === mioSegno && eseguiMossaLogica(i, j)) {
+                        conn.send({ g: i, c: j });
+                    }
                 };
                 subGrid.appendChild(cell);
             }
@@ -184,7 +253,7 @@
                     
                     const vincitoreFinale = controllaVincitore(vincitoriGriglie);
                     if (vincitoreFinale) {
-                        lanciaCoriandoli(); // SCATENA LA FESTA!
+                        lanciaCoriandoli();
                         setTimeout(() => { alert("VITTORIA FINALE PER " + vincitoreFinale); location.reload(); }, 1500);
                     }
                 } else if (segni.every(s => s !== '')) {
@@ -206,26 +275,10 @@
         function lanciaCoriandoli() {
             const durata = 3 * 1000;
             const fine = Date.now() + durata;
-
             (function frame() {
-                confetti({
-                    particleCount: 5,
-                    angle: 60,
-                    spread: 55,
-                    origin: { x: 0 },
-                    colors: ['#ff4d4d', '#4d94ff', '#f1c40f']
-                });
-                confetti({
-                    particleCount: 5,
-                    angle: 120,
-                    spread: 55,
-                    origin: { x: 1 },
-                    colors: ['#ff4d4d', '#4d94ff', '#f1c40f']
-                });
-
-                if (Date.now() < fine) {
-                    requestAnimationFrame(frame);
-                }
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff4d4d', '#4d94ff', '#f1c40f'] });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff4d4d', '#4d94ff', '#f1c40f'] });
+                if (Date.now() < fine) requestAnimationFrame(frame);
             }());
         }
 
