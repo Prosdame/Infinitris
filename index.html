@@ -1,322 +1,431 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <title>InfiniTris Online - Pro Notation</title>
-	<style>
-		:root {
-			--bg-color: #f0f0f0;
-			--text-color: #333;
-			--menu-bg: #ffffff;
-			--cell-bg: #ffffff;
-			--grid-border: #000000;
-			--accent: #f1c40f; 
-			--shadow: rgba(0,0,0,0.2);
-			--history-bg: #e8e8e8;
-			--color-x: #ff4d4d;
-			--color-o: #4d94ff;
-			--color-rnd: #9b59b6;
-			--btn-play: #2ecc71;
-		}
+    <title>InfiniTris Online - Ultimate Edition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --bg-color: #f0f0f0;
+            --text-color: #2c3e50;
+            --menu-bg: rgba(255, 255, 255, 0.95);
+            --cell-bg: #ffffff;
+            --grid-border: #2c3e50;
+            --accent: #f1c40f; 
+            --shadow: 0 10px 30px rgba(0,0,0,0.15);
+            --history-bg: #f8f9fa;
+            --color-x: #e74c3c;
+            --color-o: #3498db;
+            --color-rnd: #9b59b6;
+            --btn-play: #27ae60;
+            --timer-bg: #34495e;
+            --timer-text: #ecf0f1;
+        }
 
-		.dark-mode {
-			--bg-color: #121212;
-			--text-color: #e0e0e0;
-			--menu-bg: #1e1e1e;
-			--cell-bg: #2d2d2d;
-			--grid-border: #444444;
-			--shadow: rgba(0,0,0,0.6);
-			--history-bg: #1a1a1a;
-		}
+        .dark-mode {
+            --bg-gradient: linear-gradient(135deg, #232526 0%, #414345 100%);
+            --bg-color: #121212;
+            --text-color: #ecf0f1;
+            --menu-bg: #1e1e1e;
+            --cell-bg: #2d2d2d;
+            --grid-border: #555;
+            --shadow: 0 10px 30px rgba(0,0,0,0.5);
+            --history-bg: #1a1a1a;
+            --timer-bg: #000;
+        }
 
-		body { 
-			font-family: 'Segoe UI', sans-serif; 
-			text-align: center; 
-			background-color: var(--bg-color); 
-			color: var(--text-color);
-			margin: 0; padding: 20px; 
-			transition: background 0.5s, color 0.5s;
-		}
+        /* Fix icone in dark mode */
+        .dark-mode #settings-toggle-btn, 
+        .dark-mode .btn-exit-global {
+            color: #fff;
+            border-color: rgba(255,255,255,0.3);
+        }
 
-		button, .btn-action, .btn-settings, #settings-toggle-btn {
-			transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-			cursor: pointer;
-		}
-		button:hover, .btn-action:hover, #settings-toggle-btn:hover {
-			transform: translateY(-3px) scale(1.02);
-			filter: brightness(1.1);
-			box-shadow: 0 5px 15px var(--shadow);
-		}
-		button:active, .btn-action:active {
-			transform: translateY(0) scale(0.98);
-		}
+        body { 
+            font-family: 'Segoe UI', 'Roboto', sans-serif; 
+            text-align: center; 
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-color);
+            margin: 0; padding: 20px; 
+            transition: color 0.5s;
+            min-height: 100vh;
+        }
 
-		#game-container {
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			gap: 20px;
-			max-width: 950px;
-			margin: 0 auto;
-			position: relative;
-		}
+        /* --- UI COMPONENTS --- */
+        button, .btn-action, .btn-settings, #settings-toggle-btn, select, input[type="number"] {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:hover, .btn-action:hover, #settings-toggle-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            filter: brightness(1.1);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        button:active, .btn-action:active {
+            transform: translateY(0) scale(0.98);
+        }
 
-		.player-area {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-		}
+        h1 {
+            font-size: 3em;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
 
-		.player-tag-container {
-			width: 486px;
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			margin: 5px 0;
-			min-height: 45px;
-		}
+        /* --- LAYOUT DI GIOCO --- */
+        #game-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            max-width: 1250px; /* Allargato un po' per ospitare lo storico */
+            margin: 0 auto;
+            position: relative;
+        }
 
-		.player-tag {
-			font-size: 1.1em;
-			font-weight: bold;
-			padding: 8px 12px;
-			border-radius: 5px;
-			background: rgba(0,0,0,0.05);
-			display: none;
-			flex-grow: 1;
-			text-align: left;
-			box-sizing: border-box;
-			overflow: hidden;
-			white-space: nowrap;
-			transition: all 0.3s ease;
-			border: 2px solid transparent;
-		}
+        .player-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1;
+        }
 
-		.highlight-tag {
-			background-color: var(--accent) !important;
-			color: #000 !important;
-			border: 2px solid #000;
-		}
+        /* --- PLAYER TAG & TIMER --- */
+        .player-tag-container {
+            width: 486px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 10px 0;
+            min-height: 60px;
+            gap: 10px;
+        }
 
-		#history-wrapper {
-			display: flex;
-			flex-direction: column;
-			align-self: center;
-		}
+        .timer-box {
+            background: var(--timer-bg);
+            color: var(--timer-text);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            display: none;
+            flex-direction: column;
+            align-items: flex-end;
+            min-width: 90px;
+            border: 2px solid transparent;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+        }
 
-		#move-history-panel {
-			width: 240px;
-			height: 486px;
-			background: var(--menu-bg);
-			border: 1px solid var(--grid-border);
-			border-radius: 12px;
-			display: none; 
-			flex-direction: column;
-			box-shadow: 0 8px 20px var(--shadow);
-		}
+        .timer-main { font-size: 1.4em; line-height: 1; }
+        .timer-move { font-size: 0.8em; opacity: 0.8; color: var(--accent); }
 
-		#history-header {
-			padding: 10px;
-			font-weight: bold;
-			border-bottom: 1px solid var(--grid-border);
-			background: var(--history-bg);
-			border-radius: 12px 12px 0 0;
-		}
+        .player-tag {
+            font-size: 1.2em;
+            font-weight: bold;
+            padding: 10px 15px;
+            border-radius: 8px;
+            background: var(--menu-bg);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: none;
+            flex-grow: 1;
+            text-align: left;
+            box-sizing: border-box;
+            overflow: hidden;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
 
-		#history-list {
-			flex-grow: 1;
-			overflow-y: auto;
-			padding: 10px;
-			font-family: 'Courier New', monospace;
-			text-align: left;
-			font-size: 0.95em;
-		}
+        .highlight-tag {
+            background-color: var(--accent) !important;
+            color: #000 !important;
+            border-color: #000;
+            transform: scale(1.02);
+        }
 
-		.move-row {
-			display: flex;
-			align-items: center;
-			padding: 4px 0;
-			border-bottom: 1px solid rgba(128,128,128,0.1);
-			white-space: pre; 
-		}
+        .timer-active {
+            border-color: var(--accent);
+            animation: pulse-border 1.5s infinite;
+        }
 
-		.move-num { color: #888; width: 35px; flex-shrink: 0; }
-		.move-val { flex: 1; }
+        @keyframes pulse-border {
+            0% { border-color: var(--accent); }
+            50% { border-color: transparent; }
+            100% { border-color: var(--accent); }
+        }
 
-		#settings-menu {
-			position: absolute; top: 80px; right: 20px;
-			background: var(--menu-bg);
-			border: 1px solid var(--grid-border);
-			padding: 15px; border-radius: 12px;
-			box-shadow: 0 8px 20px var(--shadow);
-			display: none; z-index: 100;
-			text-align: left; min-width: 200px;
-		}
+        /* --- HISTORY PANEL --- */
+        #history-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-self: flex-start;
+            margin-top: 70px; 
+        }
 
-		.settings-item { margin-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 10px; }
-		.settings-item:last-child { border-bottom: none; }
-		.settings-item label { display: block; font-size: 0.9em; margin-bottom: 5px; font-weight: bold; }
+        #move-history-panel {
+            width: 280px; /* Allargato per il tempo */
+            height: 486px;
+            background: var(--menu-bg);
+            border: 1px solid var(--grid-border);
+            border-radius: 12px;
+            display: none; 
+            flex-direction: column;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
 
-		.profile-input {
-			width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--grid-border);
-			background: var(--bg-color); color: var(--text-color); box-sizing: border-box;
-		}
+        #history-header {
+            padding: 15px;
+            font-weight: bold;
+            border-bottom: 1px solid var(--grid-border);
+            background: var(--history-bg);
+            border-radius: 12px 12px 0 0;
+            font-size: 1.1em;
+        }
 
-		.stats-grid { display: flex; justify-content: space-between; font-size: 0.8em; margin-top: 5px; }
+        #history-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            text-align: left;
+            font-size: 0.90em;
+        }
 
-		#settings-toggle-btn {
-			position: absolute; top: 20px; right: 20px;
-			width: 50px; height: 50px; border-radius: 50%;
-			border: 1px solid var(--grid-border); background: var(--menu-bg);
-			font-size: 24px; display: flex; align-items: center; justify-content: center;
-			padding: 0; line-height: 1;
-		}
+        .move-row {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(128,128,128,0.1);
+            white-space: pre; 
+        }
 
-		#lobby-container {
-			display: none; margin: 20px auto; padding: 25px;
-			background: var(--menu-bg); border-radius: 15px;
-			border: 1px solid var(--grid-border); box-shadow: 0 8px 20px var(--shadow);
-			width: 500px; height: 500px; box-sizing: border-box;
-			position: relative;
-		}
+        .move-num { color: #888; width: 30px; flex-shrink: 0; text-align: right; margin-right: 5px; }
+        .move-val { flex: 1; display: flex; justify-content: space-between; margin-right: 5px; }
+        .move-time { font-size: 0.8em; color: #888; margin-left: 5px; }
 
-		.btn-exit-global {
-			background: rgba(0,0,0,0.05); border: 2px solid var(--grid-border); font-size: 24px;
-			width: 45px; height: 45px; border-radius: 50%;
-			display: flex; align-items: center; justify-content: center;
-			transition: all 0.2s ease;
-			flex-shrink: 0;
-			padding: 0; line-height: 1;
-		}
-		.btn-exit-global:hover { background: rgba(231, 76, 60, 0.2); transform: scale(1.1); }
+        /* --- SETTINGS MENU --- */
+        #settings-menu {
+            position: absolute; top: 80px; right: 20px;
+            background: var(--menu-bg);
+            border: 1px solid var(--grid-border);
+            padding: 20px; border-radius: 12px;
+            box-shadow: var(--shadow);
+            display: none; z-index: 100;
+            text-align: left; min-width: 250px;
+            backdrop-filter: blur(15px);
+        }
 
-		.lobby-names-box {
-			margin: 40px 0; text-align: left; padding: 20px; 
-			background: rgba(0,0,0,0.05); border-radius: 12px;
-			display: flex; flex-direction: column; gap: 15px;
-		}
+        .settings-item { margin-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 15px; }
+        .settings-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .settings-item label { display: block; font-size: 0.95em; margin-bottom: 8px; font-weight: bold; color: var(--text-color); }
 
-		.lobby-row-fixed {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			width: 100%;
-			gap: 10px;
-		}
+        .profile-input {
+            width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--grid-border);
+            background: var(--bg-color); color: var(--text-color); box-sizing: border-box;
+        }
 
-		.scrollable-name-area {
-			overflow: hidden;
-			white-space: nowrap;
-			flex-grow: 1;
-		}
+        .stats-grid { display: flex; justify-content: space-between; font-size: 0.85em; margin-top: 8px; color: #777; }
 
-		.preference-tag {
-			flex-shrink: 0;
-			padding: 4px 12px; border-radius: 20px;
-			font-size: 0.85em; font-weight: bold; color: white;
-			display: none;
-			min-width: 60px;
-			text-align: center;
-		}
+        #settings-toggle-btn {
+            position: absolute; top: 20px; right: 20px;
+            width: 50px; height: 50px; border-radius: 50%;
+            border: 1px solid var(--grid-border); background: var(--menu-bg);
+            font-size: 24px; display: flex; align-items: center; justify-content: center;
+            padding: 0; line-height: 1;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
 
-		#sign-selection { display: none; margin-top: 20px; }
+        /* --- HOME & LOBBIES --- */
+        #menu-online { 
+            background: var(--menu-bg); padding: 40px; border-radius: 20px; 
+            display: inline-block; box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            max-width: 400px;
+            width: 100%;
+        }
 
-		.main-grid {
-			display: none; flex-wrap: wrap; justify-content: center; align-content: center;
-			gap: 12px; padding: 12px; background-color: #333;
-			width: 486px; height: 486px; margin: 0;
-			border-radius: 12px; box-shadow: 0 15px 35px var(--shadow);
-			box-sizing: border-box; transition: background-color 0.8s ease, opacity 0.5s;
-		}
+        .input-group {
+            display: flex; gap: 10px; margin-top: 15px;
+        }
 
-		/* --- GESTIONE GRIGLIA E HIGHLIGHT --- */
-		.sub-grid {
-			display: grid; 
-			grid-template-columns: repeat(3, 46px); 
-			grid-template-rows: repeat(3, 46px);
-			gap: 2px; 
-			background-color: var(--grid-border); 
-			padding: 2px;
-			border-radius: 8px; 
-			box-sizing: border-box; 
-			width: 146px; 
-			height: 146px;
-			transition: background-color 0.3s ease;
-			flex-shrink: 0;
-			outline: 2px solid transparent; 
-			outline-offset: -2px;
-			position: relative;
-		}
-		
-		.sub-grid.highlight {
-			background-color: var(--accent) !important; /* Trasforma i solchi neri in gialli */
-			outline: 4px solid var(--accent) !important;
-			z-index: 2;
-		}
+        #peer-id-input {
+            flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #ccc;
+            background: var(--cell-bg); color: var(--text-color);
+        }
 
-		.cell {
-			width: 46px; 
-			height: 46px; 
-			background-color: var(--cell-bg) !important; /* Forza l'opacità per coprire il fondo */
-			display: flex; 
-			align-items: center; 
-			justify-content: center;
-			font-size: 24px; 
-			font-weight: bold; 
-			border-radius: 4px;
-			box-sizing: border-box; 
-			line-height: 1; 
-			user-select: none;
-			transition: transform 0.2s, background-color 0.2s;
-		}
+        /* LOBBY ONLINE */
+        #lobby-container {
+            display: none; margin: 20px auto; padding: 30px;
+            background: var(--menu-bg); border-radius: 20px;
+            border: 1px solid var(--grid-border); box-shadow: var(--shadow);
+            width: 550px; min-height: 500px; box-sizing: border-box;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
 
-		/* --- GESTIONE VITTORIA --- */
-		.grid-won-x, .grid-won-o {
-			background-color: var(--grid-border) !important; 
-			transition: background-color 0.5s ease;
-		}
+        /* LOBBY LOCALE / TESTING */
+        #local-lobby-container {
+            display: none; margin: 20px auto; padding: 30px;
+            background: var(--menu-bg); border-radius: 20px;
+            border: 1px solid var(--grid-border); box-shadow: var(--shadow);
+            width: 550px; min-height: 400px; box-sizing: border-box;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
 
-		/* Solo a vittoria avvenuta le celle diventano trasparenti per mostrare il colore pieno */
-		.grid-won-x .cell, .grid-won-o .cell {
-			background-color: transparent !important;
-		}
+        .btn-exit-global {
+            background: rgba(0,0,0,0.05); border: 2px solid var(--grid-border); font-size: 20px;
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s ease; flex-shrink: 0; padding: 0;
+        }
+        .btn-exit-global:hover { background: rgba(231, 76, 60, 0.2); transform: scale(1.1); color: #e74c3c; border-color: #e74c3c; }
 
-		.cell:hover {
-			filter: brightness(0.9);
-			transform: scale(1.05);
-			cursor: pointer;
-			z-index: 5;
-		}
-		
-		#menu-online { 
-			background: var(--menu-bg); padding: 20px; border-radius: 15px; 
-			display: inline-block; box-shadow: 0 8px 20px var(--shadow);
-			border: 1px solid var(--grid-border);
-		}
+        .lobby-names-box {
+            margin: 30px 0; text-align: left; padding: 20px; 
+            background: rgba(0,0,0,0.05); border-radius: 12px;
+            display: flex; flex-direction: column; gap: 15px;
+        }
 
-		.btn-action {
-			padding: 12px 20px; margin: 5px; border: none; border-radius: 8px;
-			font-weight: bold; color: white; background: var(--accent);
-		}
+        .lobby-row-fixed {
+            display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 10px;
+        }
 
-		#home-btn { display: none; background: #e67e22; margin-top: 15px; }
+        .scrollable-name-area { overflow: hidden; white-space: nowrap; flex-grow: 1; font-size: 1.1em; }
 
-		input[type=range] { width: 100%; cursor: pointer; }
+        .preference-tag {
+            flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+            font-size: 0.85em; font-weight: bold; color: white;
+            display: none; min-width: 60px; text-align: center;
+            margin-left: 5px;
+        }
 
-		#disconnect-overlay {
-			display: none;
-			position: fixed;
-			top: 0; left: 0; width: 100%; height: 100%;
-			background: rgba(0,0,0,0.85);
-			color: white;
-			z-index: 9999;
-			flex-direction: column;
-			justify-content: center;
-			align-items: center;
-			backdrop-filter: blur(5px);
-		}
-	</style>
+        .mode-selector-container { margin: 20px 0; text-align: left; }
+        .mode-selector-container label { font-weight: bold; display: block; margin-bottom: 5px; }
+        .mode-select, .time-input {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--grid-border);
+            background: var(--bg-color); color: var(--text-color); font-size: 1em; box-sizing: border-box;
+        }
+
+        .custom-time-row { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+        .time-input { width: 80px; text-align: center; }
+
+        #sign-selection, #guest-options { margin-top: 20px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 20px; }
+
+        /* --- GRIGLIA --- */
+        .main-grid {
+            display: none; flex-wrap: wrap; justify-content: center; align-content: center;
+            gap: 12px; padding: 12px; background-color: #2c3e50;
+            width: 486px; height: 486px; margin: 0;
+            border-radius: 12px; box-shadow: 0 15px 35px var(--shadow);
+            box-sizing: border-box; 
+            transition: outline 0.4s ease, box-shadow 0.4s ease;
+            outline: 6px solid transparent;
+        }
+
+        .turn-x-active { outline: 6px solid var(--color-x) !important; box-shadow: 0 0 25px rgba(255, 77, 77, 0.5); }
+        .turn-o-active { outline: 6px solid var(--color-o) !important; box-shadow: 0 0 25px rgba(77, 148, 255, 0.5); }
+
+        .sub-grid {
+            display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 46px);
+            gap: 2px; background-color: var(--grid-border); padding: 2px;
+            border-radius: 8px; box-sizing: border-box; width: 146px; height: 146px;
+            transition: all 0.3s ease; flex-shrink: 0;
+            outline: 2px solid transparent; outline-offset: -2px; position: relative;
+        }
+        
+        .sub-grid.highlight {
+            background-color: var(--accent) !important;
+            outline: 4px solid var(--accent) !important;
+            z-index: 2;
+        }
+
+        .cell {
+            width: 46px; height: 46px; background-color: var(--cell-bg);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: bold; border-radius: 4px;
+            box-sizing: border-box; line-height: 1; user-select: none;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .grid-won-x, .grid-won-o { transition: background-color 0.5s ease; }
+        .grid-won-x .cell, .grid-won-o .cell { background-color: transparent !important; }
+        .cell:hover { filter: brightness(0.9); transform: scale(1.05); cursor: pointer; z-index: 5; }
+        
+        .btn-action {
+            padding: 12px 25px; margin: 5px; border: none; border-radius: 8px;
+            font-weight: bold; color: white; background: var(--accent);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        #home-btn { display: none; background: #e67e22; margin-top: 15px; }
+        input[type=range] { width: 100%; cursor: pointer; }
+
+        #disconnect-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); color: white; z-index: 9999;
+            flex-direction: column; justify-content: center; align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        /* --- UPDATE FEATURE 1: Contrasto Testo su Griglie Vinte --- */
+        .grid-won-x .cell, .grid-won-o .cell { 
+            color: #ffffff !important; 
+            text-shadow: 0 1px 3px rgba(0,0,0,0.4); /* Migliora leggibilità */
+        }
+
+        /* --- UPDATE FEATURE 3 & 4: Nuova UI Lobby --- */
+        .lobby-panel-split {
+            display: flex; flex-direction: column; gap: 20px;
+        }
+        .lobby-control-box {
+            background: rgba(0,0,0,0.03); border-radius: 12px; padding: 15px;
+            border: 1px solid rgba(0,0,0,0.1); text-align: left;
+        }
+        .lobby-control-header {
+            font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .btn-apply-pref {
+            font-size: 0.7em; padding: 4px 8px; background: #34495e; color: white; border-radius: 4px; border:none;
+            display: none; /* Visibile solo se c'è un suggerimento */
+        }
+        .ready-status {
+            font-size: 0.8em; font-weight: bold; padding: 4px 8px; border-radius: 4px;
+            background: #95a5a6; color: white; margin-left: auto;
+        }
+        .is-ready { background: #27ae60 !important; } /* Verde quando pronto */
+        
+        .sign-selector-group { display: flex; gap: 10px; margin-top: 10px; }
+        .sign-btn-select { 
+            flex: 1; padding: 10px; border: 2px solid transparent; opacity: 0.6; 
+            filter: grayscale(0.8); transition: all 0.3s;
+        }
+        .sign-btn-select.selected {
+            opacity: 1; filter: grayscale(0); transform: scale(1.05);
+            border-color: #2c3e50; box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        #start-game-area {
+            margin-top: 20px; border-top: 2px dashed rgba(0,0,0,0.1); padding-top: 20px;
+        }
+        .btn-start-final {
+            width: 100%; font-size: 1.3em; padding: 15px; 
+            background: #bdc3c7; pointer-events: none; /* Disabilitato di base */
+        }
+        .btn-start-final.enabled {
+            background: var(--btn-play); pointer-events: auto; animation: pulse-start 2s infinite;
+        }
+        @keyframes pulse-start { 0% {box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7);} 70% {box-shadow: 0 0 0 10px rgba(39, 174, 96, 0);} 100% {box-shadow: 0 0 0 0 rgba(39, 174, 96, 0);} }
+    </style>
 </head>
 <body>
     <div id="disconnect-overlay">
@@ -325,7 +434,7 @@
         <button class="btn-action" style="background: var(--btn-play); font-size: 1.2em; padding: 15px 30px;" onclick="chiudiLobby()">Torna alla Lobby Principale</button>
     </div>
 
-    <button id="settings-toggle-btn" onclick="toggleSettings()">⚙️</button>
+    <button id="settings-toggle-btn" onclick="toggleSettings()"><i class="fas fa-cog"></i></button>
     
     <div id="settings-menu">
         <div class="settings-item">
@@ -337,8 +446,13 @@
             </div>
         </div>
         <div class="settings-item">
+            <label>Modalità di Test</label>
+            <button class="btn-action" onclick="apriLobbyLocale()" style="width:100%; background:#8e44ad;">🧪 Simulazione (Locale)</button>
+            <p style="font-size:0.7em; color:var(--text-color); opacity:0.7; margin-top:5px;">Crea una partita custom locale.</p>
+        </div>
+        <div class="settings-item">
             <label>Tema</label>
-            <button class="btn-action" id="night-mode-btn" onclick="toggleNightMode()" style="width:100%; background:#7f8c8d;">🌙 Notte</button>
+            <button class="btn-action" id="night-mode-btn" onclick="toggleNightMode()" style="width:100%; background:#34495e;">🌙 Notte</button>
         </div>
         <div class="settings-item">
             <label>Volume Effetti</label>
@@ -350,44 +464,144 @@
     <h1>InfiniTris Online</h1>
 
     <div id="menu-online">
-        <div style="margin-bottom: 15px;">
-            <button id="copy-btn" class="btn-action" style="background: #3498db;" onclick="copyMyID()">Caricamento ID...</button>
+        <h3 style="margin-top:0; margin-bottom: 20px;">Multigiocatore</h3>
+        <div style="margin-bottom: 20px;">
+            <button id="copy-btn" class="btn-action" style="background: #3498db; width: 100%;" onclick="copyMyID()"><i class="fas fa-copy"></i> Copia il mio ID Partita</button>
         </div>
-        <div>
-            <input type="text" id="peer-id-input" placeholder="Incolla ID amico" 
-                   style="padding: 12px; border-radius: 8px; border: 1px solid #555; background: var(--cell-bg); color: var(--text-color);">
-            <button class="btn-action" style="background: #9b59b6;" onclick="pasteID()">Incolla</button>
-            <button class="btn-action" style="background: var(--btn-play);" onclick="connettiAAmico()">Gioca</button>
+        <div style="position: relative;">
+            <div style="font-size: 0.9em; margin-bottom: 5px; text-align: left; font-weight: bold;">Unisciti a un amico:</div>
+            <div class="input-group">
+                <input type="text" id="peer-id-input" placeholder="Incolla qui l'ID..." >
+                <button class="btn-action" style="background: #9b59b6; margin:0;" onclick="pasteID()"><i class="fas fa-paste"></i></button>
+            </div>
+            <button class="btn-action" style="background: var(--btn-play); width: 100%; margin: 15px 0 0 0;" onclick="connettiAAmico()">Gioca Ora</button>
         </div>
     </div>
 
     <div id="lobby-container">
-        <button class="btn-exit-global" onclick="chiudiLobby()" title="Esci dalla Lobby" style="position: absolute; top: 15px; right: 15px;">🚪</button>
-        <h2 id="lobby-status">Lobby di Gioco</h2>
+        <button class="btn-exit-global" onclick="chiudiLobby()" title="Esci dalla Lobby" style="position: absolute; top: 15px; right: 15px;"><i class="fas fa-door-open"></i></button>
+        <h2 id="lobby-status">Sala d'Attesa</h2>
         
-        <div class="lobby-names-box">
-            <div class="lobby-row-fixed">
-                <div class="scrollable-name-area">Tu: <b id="my-name-display">...</b></div>
+        <div class="lobby-panel-split">
+            <div class="lobby-control-box">
+                <div class="lobby-control-header">Giocatori</div>
+                <div class="lobby-names-box" style="margin:0; padding:10px; background:none;">
+                    <div class="lobby-row-fixed">
+                        <div class="scrollable-name-area">Tu: <b id="my-name-display-lobby">...</b></div>
+                        <span id="my-ready-tag" class="ready-status">Non Pronto</span>
+                    </div>
+                    <div style="height:1px; background:rgba(0,0,0,0.1); margin:10px 0;"></div>
+                    <div class="lobby-row-fixed">
+                        <div class="scrollable-name-area">Avversario: <b id="enemy-name-display">In attesa...</b></div>
+                        <span id="enemy-ready-tag" class="ready-status">Non Pronto</span>
+                    </div>
+                    <div style="display:flex; align-items:center; margin-top:8px; justify-content: flex-end; gap:5px; font-size:0.85em;">
+                        <span id="pref-indicator" style="color:#777; font-style:italic; display:none;">Vuole: <span id="pref-text"></span></span>
+                        <button id="btn-apply-enemy" class="btn-apply-pref" onclick="applicaSuggerimentiAvversario()"><i class="fas fa-magic"></i> Applica</button>
+                    </div>
+                </div>
             </div>
-            <div class="lobby-row-fixed">
-                <div class="scrollable-name-area">Avversario: <b id="enemy-name-display">In attesa...</b></div>
-                <span id="pref-tag" class="preference-tag"></span>
+
+            <div id="host-controls" style="display:none;">
+                <div class="lobby-control-box">
+                    <div class="lobby-control-header">1. Imposta Partita</div>
+                    
+                    <label style="font-size:0.9em; font-weight:bold;">Modalità:</label>
+                    <select id="game-mode-select" class="mode-select" onchange="hostUpdateLobbyState()">
+                        <option value="classic">Classic (Nessun Limite)</option>
+                        <option value="bullet">Timed: Bullet (1 min)</option>
+                        <option value="blitz">Timed: Blitz (3 min)</option>
+                        <option value="rapid">Timed: Rapid (15 min)</option>
+                        <option value="standard">Timed: Standard (30 min)</option>
+                        <option value="custom">⚙️ Custom (Manuale)</option>
+                    </select>
+
+                    <div id="host-custom-time-box" class="custom-time-row" style="display:none; justify-content: center; margin-top:10px;">
+                        <input type="number" id="host-custom-min" class="time-input" placeholder="Min" min="0" value="5" onchange="hostUpdateLobbyState()"> : 
+                        <input type="number" id="host-custom-sec" class="time-input" placeholder="Sec" min="0" max="59" value="00" onchange="hostUpdateLobbyState()">
+                    </div>
+
+                    <div style="margin-top:15px;">
+                        <label style="font-size:0.9em; font-weight:bold;">Chi inizia (Tuo Segno):</label>
+                        <div class="sign-selector-group">
+                            <button id="btn-sel-x" class="btn-action sign-btn-select" style="background: var(--color-x);" onclick="selezionaSegnoHost('X')">IO SONO X</button>
+                            <button id="btn-sel-o" class="btn-action sign-btn-select" style="background: var(--color-o);" onclick="selezionaSegnoHost('O')">IO SONO O</button>
+                            <button id="btn-sel-rnd" class="btn-action sign-btn-select" style="background: var(--color-rnd);" onclick="selezionaSegnoHost('random')">🎲 CASUALE</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="start-game-area">
+                    <button id="btn-start-match" class="btn-action btn-start-final" onclick="avviaPartitaFinaleHost()">AVVIA PARTITA <i class="fas fa-play"></i></button>
+                    <p id="host-status-msg" style="font-size:0.8em; color:#777; margin-top:5px;">Attendi che l'avversario sia pronto...</p>
+                </div>
+            </div>
+
+            <div id="guest-controls" style="display:none;">
+                <div class="lobby-control-box">
+                    <div class="lobby-control-header">Info Partita</div>
+                    <div style="font-size:0.95em; line-height:1.6;">
+                        Modalità: <b id="guest-display-mode">...</b><br>
+                        Tempo: <b id="guest-display-time">...</b><br>
+                        Tu sarai: <b id="guest-display-sign" style="font-size:1.2em;">?</b>
+                    </div>
+                </div>
+
+                <div class="lobby-control-box" style="margin-top:20px;">
+                    <div class="lobby-control-header">Le tue preferenze</div>
+                    <p style="font-size:0.8em; margin-bottom:10px; opacity:0.8;">Suggerisci all'host come vuoi giocare (Feature 2 & 3).</p>
+                    
+                    <select id="guest-mode-suggest" class="mode-select" onchange="inviaSuggerimentoGuest()">
+                        <option value="" disabled selected>Suggerisci Modalità...</option>
+                        <option value="classic">Classic (Nessun Limite)</option>
+                        <option value="bullet">Bullet (1 min)</option>
+                        <option value="blitz">Blitz (3 min)</option>
+                        <option value="rapid">Rapid (15 min)</option>
+                        <option value="standard">Standard (30 min)</option>
+                        <option value="custom">⚙️ Custom (Manuale)</option>
+                    </select>
+
+                    <div id="guest-custom-time-box" class="custom-time-row" style="display:none; justify-content: center; margin-top:10px;">
+                        <input type="number" id="guest-custom-min" class="time-input" placeholder="Min" min="0" value="5" onchange="inviaSuggerimentoGuest()"> : 
+                        <input type="number" id="guest-custom-sec" class="time-input" placeholder="Sec" min="0" max="59" value="00" onchange="inviaSuggerimentoGuest()">
+                    </div>
+
+                    <div class="sign-selector-group" style="margin-top:15px;">
+                        <button class="btn-action sign-btn-select" style="background: var(--color-x); height:40px; padding:0;" onclick="inviaPrefSegnoGuest('X')">Voglio X</button>
+                        <button class="btn-action sign-btn-select" style="background: var(--color-o); height:40px; padding:0;" onclick="inviaPrefSegnoGuest('O')">Voglio O</button>
+                        <button class="btn-action sign-btn-select" style="background: var(--color-rnd); height:40px; padding:0;" onclick="inviaPrefSegnoGuest('random')">🎲 Rnd</button>
+                    </div>
+                </div>
+
+                <button id="btn-guest-ready" class="btn-action" style="width:100%; margin-top:20px; background:#95a5a6;" onclick="toggleGuestReady()">NON PRONTO ❌</button>
             </div>
         </div>
+    </div>
 
-        <div id="sign-selection">
-            <p>Scegli il segno per la partita:</p>
-            <button class="btn-action" style="background: var(--color-x);" onclick="scegliSegno('X')">X</button>
-            <button class="btn-action" style="background: var(--color-o);" onclick="scegliSegno('O')">O</button>
-            <button class="btn-action" style="background: var(--color-rnd);" onclick="scegliSegno('random')">🎲 Random</button>
-        </div>
+    <div id="local-lobby-container">
+        <button class="btn-exit-global" onclick="chiudiLobby()" title="Torna al Menu" style="position: absolute; top: 15px; right: 15px;"><i class="fas fa-door-open"></i></button>
+        <h2>Partita Custom Locale</h2>
+        <div style="text-align: left; margin: 20px 0;">
+            <label style="font-weight:bold; display:block; margin-bottom:5px;">Scegli Preset:</label>
+            <select id="local-mode-select" class="mode-select" onchange="aggiornaInputTempoLocale()">
+                <option value="classic">Classic (Infinito)</option>
+                <option value="bullet">Bullet (1 min)</option>
+                <option value="blitz">Blitz (3 min)</option>
+                <option value="rapid">Rapid (15 min)</option>
+                <option value="standard">Standard (30 min)</option>
+                <option value="custom">Custom (Manuale)</option>
+            </select>
 
-        <div id="guest-options" style="display: none;">
-            <p>Esprimi una preferenza:</p>
-            <button class="btn-action" style="background: var(--color-x); opacity: 0.8;" onclick="inviaPreferenza('X')">Voglio X</button>
-            <button class="btn-action" style="background: var(--color-o); opacity: 0.8;" onclick="inviaPreferenza('O')">Voglio O</button>
-            <button class="btn-action" style="background: var(--color-rnd); opacity: 0.8;" onclick="inviaPreferenza('random')">🎲 Random</button>
+            <div id="custom-time-inputs" style="display:none; margin-top:15px; border-top:1px solid rgba(0,0,0,0.1); padding-top:15px;">
+                <label style="font-weight:bold;">Tempo Personalizzato per Giocatore:</label>
+                <div class="custom-time-row">
+                    <input type="number" id="custom-min" class="time-input" placeholder="Min" min="0" value="5">
+                    <span>:</span>
+                    <input type="number" id="custom-sec" class="time-input" placeholder="Sec" min="0" max="59" value="00">
+                </div>
+            </div>
         </div>
+        <button class="btn-action" style="width:100%; background: #8e44ad; margin-top:20px;" onclick="avviaPartitaLocale()">Inizia Simulazione</button>
     </div>
 
     <div style="display: flex; flex-direction: column; align-items: center;">
@@ -398,11 +612,21 @@
     <div id="game-container">
         <div class="player-area">
             <div class="player-tag-container">
+                <div id="timer-enemy" class="timer-box">
+                    <span class="timer-main">00:00</span>
+                    <span class="timer-move">0.0s</span>
+                </div>
                 <div id="enemy-tag" class="player-tag"></div>
-                <button id="global-exit-btn" class="btn-exit-global" onclick="chiudiLobby()" title="Esci" style="display:none; margin-left: 10px;">🚪</button>
+                <button id="global-exit-btn" class="btn-exit-global" onclick="chiudiLobby()" title="Esci" style="display:none; margin-left: 10px;"><i class="fas fa-door-open"></i></button>
             </div>
+            
             <div id="game-board" class="main-grid"></div>
+            
             <div class="player-tag-container">
+                <div id="timer-my" class="timer-box">
+                    <span class="timer-main">00:00</span>
+                    <span class="timer-move">0.0s</span>
+                </div>
                 <div id="my-tag" class="player-tag"></div>
             </div>
         </div>
@@ -415,23 +639,177 @@
     </div>
 
     <script>
+        // --- STATO DEL GIOCO ---
         let profile = JSON.parse(localStorage.getItem('it_profile')) || { name: "Player" + Math.floor(Math.random()*999), wins: 0, losses: 0 };
         let enemyName = "Avversario", moveCount = 1;
         let globalVolumeMult = parseFloat(localStorage.getItem('gameVolume')) || 1;
+        let myPeerId = "", partitaAttiva = false;
+        let peer = new Peer(), conn, mioSegno = '', turno = 'X', grigliaObbligatoria = -1;
+        let vincitoriGriglie = Array(9).fill(null);
+        const COMBINAZIONI_VINCENTI = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+        // --- VARIABILI NUOVE FUNZIONALITA' ---
+        let isSimulazione = false;
+        let currentMode = 'classic'; // classic, bullet, blitz, rapid, standard, custom
+        let initialTime = 0; // secondi
+        let timers = {
+            X: { remaining: 0, totalPlayed: 0 },
+            O: { remaining: 0, totalPlayed: 0 }
+        };
+        let lastMoveTime = 0;
+        let timerInterval = null;
+        let currentMoveStart = 0;
+
+        // NUOVE VARIABILI LOBBY (Feature 3 & 4)
+        let hostSelectedSign = null; 
+        let guestIsReady = false;
+        let lastGuestSuggestion = { mode: null, time: null, sign: null };
+        let customTimeValue = 300; // Default 5 min
+
+        // Mappa dei tempi in secondi
+        const TIME_CONTROLS = {
+            classic: 0, 
+            bullet: 60,
+            blitz: 180,
+            rapid: 900,
+            standard: 1800
+        };
 
         window.onbeforeunload = function() { if (partitaAttiva) return "Hai una partita in corso!"; };
 
+        // --- GESTIONE TIMER E MODALITA' ---
+        function setGameMode(mode, customSeconds = 0) {
+            currentMode = mode;
+            if (mode === 'custom') {
+                initialTime = customSeconds > 0 ? customSeconds : 300; // Fallback 5 min
+            } else {
+                initialTime = TIME_CONTROLS[mode] || 0;
+            }
+            // Reset timers
+            timers.X.remaining = initialTime;
+            timers.O.remaining = initialTime;
+            timers.X.totalPlayed = 0;
+            timers.O.totalPlayed = 0;
+        }
+
+        function avviaTimerEngine() {
+            if (timerInterval) clearInterval(timerInterval);
+            lastMoveTime = Date.now();
+            currentMoveStart = Date.now();
+            
+            updateTimerDisplay();
+
+            timerInterval = setInterval(() => {
+                if (!partitaAttiva) { clearInterval(timerInterval); return; }
+                
+                const now = Date.now();
+                const delta = (now - lastMoveTime) / 1000; 
+                lastMoveTime = now;
+
+                if (currentMode === 'classic') {
+                    timers[turno].remaining += delta; 
+                } else {
+                    timers[turno].remaining -= delta;
+                    if (timers[turno].remaining <= 0) {
+                        timers[turno].remaining = 0;
+                        updateTimerDisplay();
+                        clearInterval(timerInterval);
+                        gestisciTimeout();
+                        return;
+                    }
+                }
+                updateTimerDisplay();
+            }, 100); 
+        }
+
+        function switchTimer() {
+            const now = Date.now();
+            const duration = (now - currentMoveStart) / 1000;
+            currentMoveStart = now; 
+            return duration;
+        }
+
+        function formatTime(seconds) {
+            let s = Math.abs(Math.floor(seconds));
+            let m = Math.floor(s / 60);
+            s = s % 60;
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        function updateTimerDisplay() {
+            const now = Date.now();
+            const moveDuration = (now - currentMoveStart) / 1000;
+            
+            // Logica di visualizzazione timer
+            let myDisplay, enemyDisplay;
+            let valMy, valEnemy;
+
+            // Identifica chi visualizzare dove
+            if (isSimulazione) {
+                // In simulazione: Sinistra = X (my), Destra = O (enemy) per convenzione UI
+                myDisplay = document.getElementById('timer-my'); // Useremo "my" per X
+                enemyDisplay = document.getElementById('timer-enemy'); // "enemy" per O
+                valMy = timers['X'].remaining;
+                valEnemy = timers['O'].remaining;
+            } else {
+                myDisplay = document.getElementById('timer-my');
+                enemyDisplay = document.getElementById('timer-enemy');
+                valMy = timers[mioSegno].remaining;
+                valEnemy = timers[mioSegno === 'X' ? 'O' : 'X'].remaining;
+            }
+
+            myDisplay.querySelector('.timer-main').innerText = formatTime(valMy);
+            enemyDisplay.querySelector('.timer-main').innerText = formatTime(valEnemy);
+
+            // Aggiorna tempo mossa corrente
+            let durationText = moveDuration.toFixed(1) + 's';
+            
+            // Reset visuale
+            myDisplay.querySelector('.timer-move').innerText = "";
+            enemyDisplay.querySelector('.timer-move').innerText = "";
+            myDisplay.classList.remove('timer-active');
+            enemyDisplay.classList.remove('timer-active');
+
+            if(partitaAttiva) {
+                if (isSimulazione) {
+                    if (turno === 'X') {
+                        myDisplay.querySelector('.timer-move').innerText = durationText;
+                        myDisplay.classList.add('timer-active');
+                    } else {
+                        enemyDisplay.querySelector('.timer-move').innerText = durationText;
+                        enemyDisplay.classList.add('timer-active');
+                    }
+                } else {
+                    if (turno === mioSegno) {
+                        myDisplay.querySelector('.timer-move').innerText = durationText;
+                        myDisplay.classList.add('timer-active');
+                    } else {
+                        enemyDisplay.querySelector('.timer-move').innerText = durationText;
+                        enemyDisplay.classList.add('timer-active');
+                    }
+                }
+            }
+        }
+
+        function gestisciTimeout() {
+            // Chi ha il turno ha perso per tempo
+            let vincitore = turno === 'X' ? 'O' : 'X';
+            // Flag speciale per indicare vittoria per tempo
+            gestisciFinePartita(vincitore, true); 
+        }
+
+        // --- GESTIONE PROFILO ---
         function saveProfile() {
             profile.name = document.getElementById('username-input').value || "Player";
             localStorage.setItem('it_profile', JSON.stringify(profile));
-            document.getElementById('my-name-display').innerText = profile.name;
+            document.getElementById('my-name-display-lobby').innerText = profile.name;
             
-            if(partitaAttiva) {
+            if(partitaAttiva && !isSimulazione) {
                 document.getElementById('my-tag').innerText = profile.name + " (" + mioSegno + ")";
                 aggiornaTurnoUI();
             }
 
-            if (conn && conn.open) {
+            if (conn && conn.open && !isSimulazione) {
                 conn.send({ tipo: 'nome-update', name: profile.name });
             }
         }
@@ -440,7 +818,7 @@
             document.getElementById('username-input').value = profile.name;
             document.getElementById('stat-win').innerText = profile.wins;
             document.getElementById('stat-loss').innerText = profile.losses;
-            document.getElementById('my-name-display').innerText = profile.name;
+            document.getElementById('my-name-display-lobby').innerText = profile.name;
         }
         updateStatsUI();
 
@@ -531,15 +909,12 @@
             }
         }
 
-        let myPeerId = "", partitaAttiva = false;
-        let peer = new Peer(), conn, mioSegno = '', turno = 'X', grigliaObbligatoria = -1;
-        let vincitoriGriglie = Array(9).fill(null);
-        const COMBINAZIONI_VINCENTI = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-
+        // --- PEERJS & NETWORKING ---
         const board = document.getElementById('game-board');
         const infoTurno = document.getElementById('info-turno');
         const menuOnline = document.getElementById('menu-online');
         const lobbyContainer = document.getElementById('lobby-container');
+        const localLobbyContainer = document.getElementById('local-lobby-container');
         const signSelection = document.getElementById('sign-selection');
         const guestOptions = document.getElementById('guest-options');
         const historyList = document.getElementById('history-list');
@@ -548,12 +923,12 @@
         const globalExitBtn = document.getElementById('global-exit-btn');
         const disconnectOverlay = document.getElementById('disconnect-overlay');
 
-        peer.on('open', (id) => { myPeerId = id; copyBtn.innerText = "Copia il mio ID Partita 📋"; });
+        peer.on('open', (id) => { myPeerId = id; });
         peer.on('connection', (c) => { if (conn) { c.close(); return; } conn = c; mioSegno = 'HOST'; setupRicezione(); });
         
         peer.on('error', (err) => {
             console.error("PeerJS Error:", err);
-            if(partitaAttiva) gestisciDisconnessione();
+            if(partitaAttiva && !isSimulazione) gestisciDisconnessione();
         });
 
         function connettiAAmico() {
@@ -565,16 +940,31 @@
             setupRicezione();
         }
 
+        // FUNZIONE RICEZIONE AGGIORNATA PER NUOVA UI LOBBY
         function setupRicezione() {
             conn.on('open', () => { 
                 menuOnline.style.display = 'none';
+                localLobbyContainer.style.display = 'none';
                 lobbyContainer.style.display = 'block';
+                document.getElementById('my-name-display-lobby').innerText = profile.name;
+                
                 conn.send({ tipo: 'lobby-join', name: profile.name });
-                if (mioSegno === 'HOST') signSelection.style.display = 'block';
-                else guestOptions.style.display = 'block';
+                
+                if (mioSegno === 'HOST') {
+                    document.getElementById('host-controls').style.display = 'block';
+                    document.getElementById('guest-controls').style.display = 'none';
+                    document.getElementById('my-ready-tag').classList.add('is-ready');
+                    document.getElementById('my-ready-tag').innerText = "HOST";
+                    hostUpdateLobbyState(); // Invia stato iniziale
+                } else {
+                    document.getElementById('host-controls').style.display = 'none';
+                    document.getElementById('guest-controls').style.display = 'block';
+                    document.getElementById('my-ready-tag').classList.remove('is-ready');
+                }
             });
 
             conn.on('data', (data) => {
+                // Handshake iniziale
                 if (data.tipo === 'lobby-join' || data.tipo === 'lobby-ack' || data.tipo === 'nome-update') {
                     enemyName = data.name;
                     document.getElementById('enemy-name-display').innerText = enemyName;
@@ -582,15 +972,74 @@
                         document.getElementById('enemy-tag').innerText = enemyName + " (" + (mioSegno === 'X' ? 'O' : 'X') + ")";
                         aggiornaTurnoUI();
                     }
-                    if(data.tipo === 'lobby-join' && mioSegno === 'HOST') conn.send({ tipo: 'lobby-ack', name: profile.name });
+                    if(data.tipo === 'lobby-join' && mioSegno === 'HOST') {
+                        conn.send({ tipo: 'lobby-ack', name: profile.name });
+                        hostUpdateLobbyState(); // Aggiorna il guest appena entrato
+                    }
                 }
-                else if (data.tipo === 'pref') {
-                    const tag = document.getElementById('pref-tag');
-                    tag.style.display = 'inline-block';
-                    tag.innerText = data.segno;
-                    tag.style.background = (data.segno === 'X') ? 'var(--color-x)' : (data.segno === 'O' ? 'var(--color-o)' : 'var(--color-rnd)');
+                // GUEST -> HOST: Suggerimenti (Feature 2 & 3 & 4)
+                else if (data.tipo === 'guest-suggestion') {
+                    if (data.subType === 'mode') {
+                        lastGuestSuggestion.mode = data.val;
+                        lastGuestSuggestion.time = data.customTime;
+                    } else if (data.subType === 'sign') {
+                        lastGuestSuggestion.sign = data.val;
+                    }
+                    
+                    // Mostra suggerimento all'Host (Feature 4)
+                    const prefText = document.getElementById('pref-text');
+                    const prefInd = document.getElementById('pref-indicator');
+                    const btnApply = document.getElementById('btn-apply-enemy');
+                    
+                    let txt = "";
+                    if(lastGuestSuggestion.sign) txt += "Segno " + lastGuestSuggestion.sign + " ";
+                    if(lastGuestSuggestion.mode) txt += "| " + lastGuestSuggestion.mode;
+                    
+                    prefText.innerText = txt;
+                    prefInd.style.display = 'block';
+                    btnApply.style.display = 'inline-block';
+                    playClickSound();
                 }
-                else if (data.tipo === 'start') { mioSegno = data.segno; avviaPartitaUI(); }
+                // GUEST -> HOST: Ready Status
+                else if (data.tipo === 'guest-ready-change') {
+                    guestIsReady = data.isReady;
+                    const tag = document.getElementById('enemy-ready-tag');
+                    if(guestIsReady) {
+                        tag.innerText = "PRONTO!";
+                        tag.classList.add('is-ready');
+                        playPencilSound(); // Suono notifica
+                    } else {
+                        tag.innerText = "Non Pronto";
+                        tag.classList.remove('is-ready');
+                    }
+                    checkHostStartButton();
+                }
+                // HOST -> GUEST: Aggiornamento Stato Lobby
+                else if (data.tipo === 'lobby-state-update') {
+                    // Aggiorna UI Guest
+                    document.getElementById('guest-display-mode').innerText = data.mode.toUpperCase();
+                    
+                    let timeStr = TIME_CONTROLS[data.mode] ? (TIME_CONTROLS[data.mode]/60)+"m" : "∞";
+                    if(data.mode === 'custom') timeStr = Math.floor(data.customTime/60) + "m " + (data.customTime%60) + "s";
+                    document.getElementById('guest-display-time').innerText = timeStr;
+
+                    if(data.hostSign) {
+                        let yourSign = data.hostSign === 'random' ? '?' : (data.hostSign === 'X' ? 'O' : 'X');
+                        document.getElementById('guest-display-sign').innerText = yourSign;
+                        document.getElementById('guest-display-sign').style.color = yourSign === 'X' ? 'var(--color-x)' : (yourSign === 'O' ? 'var(--color-o)' : 'gray');
+                    } else {
+                        document.getElementById('guest-display-sign').innerText = "In attesa...";
+                    }
+                }
+                // AVVIO PARTITA
+                else if (data.tipo === 'start-game-final') { 
+                    mioSegno = data.yourSign; 
+                    setGameMode(data.mode, data.customTime);
+                    playWinSounds(); // Suono start
+                    avviaPartitaUI(); 
+                }
+                
+                // Gioco
                 else if (data.tipo === 'mossa') { eseguiMossaLogica(data.g, data.c); }
                 else if (data.tipo === 'reset-lobby') { resetPerNuovaPartita(); }
             });
@@ -599,20 +1048,78 @@
             conn.on('error', () => { gestisciDisconnessione(); });
         }
 
+        // --- GESTIONE LOGICA MODALITÀ ---
+        function aggiornaModalitaHost() {
+            // Deprecata per uso online (ora usa hostUpdateLobbyState), mantenuta per sicurezza
+            const select = document.getElementById('game-mode-select');
+            currentMode = select.value;
+            if (conn) conn.send({ tipo: 'mode-update', mode: currentMode });
+        }
+
+        function suggerisciModalita() {
+            // Deprecata: ora integrata in inviaSuggerimentoGuest
+            const select = document.getElementById('guest-mode-suggest');
+            const suggestion = select.value;
+            if (conn) conn.send({ tipo: 'suggest-mode', mode: suggestion });
+        }
+
+        // --- SIMULAZIONE & LOBBY LOCALE ---
+        function apriLobbyLocale() {
+            playClickSound();
+            toggleSettings(); 
+            menuOnline.style.display = 'none';
+            lobbyContainer.style.display = 'none';
+            localLobbyContainer.style.display = 'block';
+        }
+
+        function aggiornaInputTempoLocale() {
+            const val = document.getElementById('local-mode-select').value;
+            document.getElementById('custom-time-inputs').style.display = (val === 'custom') ? 'block' : 'none';
+        }
+
+        function avviaPartitaLocale() {
+            playClickSound();
+            const modeSelect = document.getElementById('local-mode-select').value;
+            let customSec = 0;
+            
+            if (modeSelect === 'custom') {
+                let m = parseInt(document.getElementById('custom-min').value) || 0;
+                let s = parseInt(document.getElementById('custom-sec').value) || 0;
+                customSec = (m * 60) + s;
+                if(customSec <= 0) customSec = 300; // fallback 5 min
+            }
+
+            isSimulazione = true;
+            mioSegno = 'X'; 
+            enemyName = "Simulazione";
+            
+            setGameMode(modeSelect, customSec);
+            localLobbyContainer.style.display = 'none';
+            avviaPartitaUI();
+        }
+
+        // --- GESTIONE PARTITA ---
         function gestisciDisconnessione() {
             if (!partitaAttiva && lobbyContainer.style.display === 'none') return;
             partitaAttiva = false;
             if(conn) { conn.close(); conn = null; }
             disconnectOverlay.style.display = 'flex';
+            clearInterval(timerInterval);
         }
 
         function inviaPreferenza(s) { playClickSound(); if(conn) conn.send({ tipo: 'pref', segno: s }); }
         
         function scegliSegno(scelta) {
+            // Funzione legacy/backup se necessario, ma la nuova UI usa selezionaSegnoHost
             playClickSound();
             let scelto = scelta === 'random' ? (Math.random() < 0.5 ? 'X' : 'O') : scelta;
             mioSegno = scelto;
-            if(conn) conn.send({ tipo: 'start', segno: scelto === 'X' ? 'O' : 'X' });
+            
+            const modeSelect = document.getElementById('game-mode-select');
+            currentMode = modeSelect.value;
+            setGameMode(currentMode);
+
+            if(conn) conn.send({ tipo: 'start', segno: scelto === 'X' ? 'O' : 'X', mode: currentMode });
             avviaPartitaUI();
         }
 
@@ -621,11 +1128,23 @@
             lobbyContainer.style.display = 'none';
             board.style.display = 'flex';
             globalExitBtn.style.display = 'flex';
+            
             document.querySelectorAll('.player-tag').forEach(t => t.style.display = 'block');
-            document.getElementById('my-tag').innerText = profile.name + " (" + mioSegno + ")";
-            document.getElementById('enemy-tag').innerText = enemyName + " (" + (mioSegno === 'X' ? 'O' : 'X') + ")";
+            document.querySelectorAll('.timer-box').forEach(t => t.style.display = 'flex');
+
+            if (isSimulazione) {
+                document.getElementById('my-tag').innerText = "Giocatore X";
+                document.getElementById('enemy-tag').innerText = "Giocatore O";
+            } else {
+                document.getElementById('my-tag').innerText = profile.name + " (" + mioSegno + ")";
+                document.getElementById('enemy-tag').innerText = enemyName + " (" + (mioSegno === 'X' ? 'O' : 'X') + ")";
+            }
+
             document.getElementById('move-history-panel').style.display = 'flex';
-            aggiornaTurnoUI(); aggiornaEvidenziazione();
+            
+            avviaTimerEngine(); 
+            aggiornaTurnoUI(); 
+            aggiornaEvidenziazione();
         }
 
         function chiudiLobby() { 
@@ -642,8 +1161,9 @@
                     const cell = document.createElement('div');
                     cell.className = 'cell';
                     cell.onclick = () => {
-                        if (partitaAttiva && turno === mioSegno && eseguiMossaLogica(i, j)) {
-                            if(conn) conn.send({ tipo: 'mossa', g: i, c: j });
+                        let isMyTurn = isSimulazione ? true : (turno === mioSegno);
+                        if (partitaAttiva && isMyTurn && eseguiMossaLogica(i, j)) {
+                            if(conn && !isSimulazione) conn.send({ tipo: 'mossa', g: i, c: j });
                         }
                     };
                     subGrid.appendChild(cell);
@@ -661,107 +1181,195 @@
                 playPencilSound();
                 cella.innerText = turno;
                 cella.style.color = (turno === 'X') ? 'var(--color-x)' : 'var(--color-o)';
+                
                 const segni = Array.from(subGrid.children).map(c => c.innerText);
                 const win = controllaVincitore(segni);
+                
                 if (win) {
                     vincitoriGriglie[gIdx] = win;
                     subGrid.classList.add(win === 'X' ? 'grid-won-x' : 'grid-won-o');
-                    subGrid.style.backgroundColor = (win === 'X') ? 'rgba(231, 76, 60, 0.4)' : 'rgba(52, 152, 219, 0.4)';
+                    subGrid.style.backgroundColor = (win === 'X') ? 'var(--color-x)' : 'var(--color-o)';
                     m = "*";
                     const finale = controllaVincitore(vincitoriGriglie);
                     if (finale) {
-                        registraNotazione(gIdx, cIdx, "#");
+                        registraNotazione(gIdx, cIdx, "#", switchTimer());
                         gestisciFinePartita(finale);
                         return true;
                     }
-                } else if (segni.every(s => s !== '')) { vincitoriGriglie[gIdx] = 'Pareggio'; m = "="; }
-                registraNotazione(gIdx, cIdx, m);
+                } else if (segni.every(s => s !== '')) { 
+                    vincitoriGriglie[gIdx] = 'Pareggio'; 
+                    subGrid.style.backgroundColor = '#777'; 
+                    m = "="; 
+                }
+                
+                // Passa la durata al renderer della notazione
+                let duration = switchTimer();
+                registraNotazione(gIdx, cIdx, m, duration);
+                
                 grigliaObbligatoria = (vincitoriGriglie[cIdx] !== null || Array.from(board.children[cIdx].children).every(s => s.innerText !== '')) ? -1 : cIdx;
                 turno = (turno === 'X') ? 'O' : 'X';
-                aggiornaTurnoUI(); aggiornaEvidenziazione();
+                
+                aggiornaTurnoUI(); 
+                aggiornaEvidenziazione();
                 return true;
             }
             return false;
         }
 
-        function registraNotazione(g, c, speciale) {
+        function registraNotazione(g, c, speciale, duration) {
             let sin = `G${g+1}c${c+1}${speciale.padEnd(1, ' ')}`;
+            let timeStr = duration ? `<span class="move-time">(${duration.toFixed(1)}s)</span>` : '';
+            
             if (turno === 'X') {
                 const row = document.createElement('div'); row.className = 'move-row';
                 let displayNum = moveCount < 10 ? ` ${moveCount}.` : `${moveCount}.`;
-                row.innerHTML = `<span class="move-num">${displayNum}</span><span class="move-val">${sin}</span><span id="move-o-${moveCount}" class="move-val"></span>`;
+                row.innerHTML = `<span class="move-num">${displayNum}</span><span class="move-val">${sin}${timeStr}</span><span id="move-o-${moveCount}" class="move-val"></span>`;
                 historyList.appendChild(row);
             } else {
                 const target = document.getElementById(`move-o-${moveCount}`);
-                if(target) target.innerText = sin;
+                if(target) target.innerHTML = `${sin}${timeStr}`;
                 moveCount++;
             }
             historyList.scrollTop = historyList.scrollHeight;
         }
 
         function aggiornaTurnoUI() {
-            if(!partitaAttiva) return;
-            const nomeCorrente = (turno === mioSegno) ? profile.name + " (TU)" : enemyName;
-            infoTurno.innerText = "Turno: " + turno + " - " + nomeCorrente;
+            if(!partitaAttiva) {
+                board.classList.remove('turn-x-active', 'turn-o-active');
+                return;
+            }
+            
+            let displayTurnText = turno;
+            if (!isSimulazione) {
+                displayTurnText += (turno === mioSegno) ? " (TU)" : " (" + enemyName + ")";
+            } else {
+                displayTurnText += (turno === 'X') ? " (Giocatore X)" : " (Giocatore O)";
+            }
+            infoTurno.innerText = "Turno: " + displayTurnText;
             
             const myTag = document.getElementById('my-tag');
             const enemyTag = document.getElementById('enemy-tag');
             
-            if (turno === mioSegno) {
-                myTag.classList.add('highlight-tag');
-                enemyTag.classList.remove('highlight-tag');
+            let isMyTagHighlight = false;
+            if (isSimulazione) {
+                if (turno === 'X') {
+                    myTag.classList.add('highlight-tag');
+                    enemyTag.classList.remove('highlight-tag');
+                } else {
+                    enemyTag.classList.add('highlight-tag');
+                    myTag.classList.remove('highlight-tag');
+                }
             } else {
-                enemyTag.classList.add('highlight-tag');
-                myTag.classList.remove('highlight-tag');
+                if (turno === mioSegno) {
+                    myTag.classList.add('highlight-tag');
+                    enemyTag.classList.remove('highlight-tag');
+                } else {
+                    enemyTag.classList.add('highlight-tag');
+                    myTag.classList.remove('highlight-tag');
+                }
             }
 
-            board.style.backgroundColor = (turno === 'X') ? 'rgba(231, 76, 60, 0.25)' : 'rgba(52, 152, 219, 0.25)';
+            board.classList.remove('turn-x-active', 'turn-o-active');
+            board.classList.add(turno === 'X' ? 'turn-x-active' : 'turn-o-active');
         }
 
         function aggiornaEvidenziazione() {
             Array.from(board.children).forEach((g, i) => {
                 g.classList.remove('highlight');
                 if (partitaAttiva) {
-                    if (grigliaObbligatoria === -1) { if (vincitoriGriglie[i] === null) g.classList.add('highlight'); }
+                    if (grigliaObbligatoria === -1) { 
+                        if (vincitoriGriglie[i] === null) g.classList.add('highlight'); 
+                    }
                     else if (i === grigliaObbligatoria) { g.classList.add('highlight'); }
                 }
             });
         }
 
-        function gestisciFinePartita(vincitore) {
+        function gestisciFinePartita(vincitore, perTempo = false) {
             partitaAttiva = false;
+            clearInterval(timerInterval); 
+            
             homeBtn.style.display = 'block';
             aggiornaEvidenziazione();
+            board.classList.remove('turn-x-active', 'turn-o-active');
             document.getElementById('my-tag').classList.remove('highlight-tag');
             document.getElementById('enemy-tag').classList.remove('highlight-tag');
+            document.querySelectorAll('.timer-box').forEach(t => t.classList.remove('timer-active'));
 
-            if (vincitore === mioSegno) {
-                profile.wins++; lanciaCoriandoli(); playWinSounds();
-                infoTurno.innerHTML = `<span style="color:var(--accent)">🏆 VITTORIA PER ${profile.name}!</span>`;
-            } else if (vincitore === 'Pareggio') {
-                infoTurno.innerText = "PARTITA FINITA IN PAREGGIO";
+            let msg = "";
+            let prefix = perTempo ? "⌛ TEMPO SCADUTO! " : "";
+
+            if (vincitore === 'Pareggio') {
+                msg = "PARTITA FINITA IN PAREGGIO";
             } else {
-                profile.losses++;
-                infoTurno.innerHTML = `<span style="color:#e74c3c">🚩 VITTORIA PER ${enemyName}</span>`;
+                if (isSimulazione) {
+                    msg = `${prefix}VITTORIA PER ${vincitore}!`;
+                    lanciaCoriandoli(); playWinSounds();
+                } else {
+                    if (vincitore === mioSegno) {
+                        profile.wins++; lanciaCoriandoli(); playWinSounds();
+                        msg = `${prefix}🏆 VITTORIA PER ${profile.name}!`;
+                    } else {
+                        profile.losses++;
+                        msg = `${prefix}🚩 VITTORIA PER ${enemyName}`;
+                    }
+                    saveProfile(); updateStatsUI();
+                }
             }
-            saveProfile(); updateStatsUI();
+            
+            infoTurno.innerHTML = `<span style="color:var(--accent)">${msg}</span>`;
         }
 
-        function ritornaInLobby() { playClickSound(); if(conn) conn.send({ tipo: 'reset-lobby' }); resetPerNuovaPartita(); }
+        function ritornaInLobby() { 
+            playClickSound(); 
+            if(conn && !isSimulazione) conn.send({ tipo: 'reset-lobby' }); 
+            resetPerNuovaPartita(); 
+        }
 
         function resetPerNuovaPartita() {
-            partitaAttiva = false; vincitoriGriglie.fill(null); grigliaObbligatoria = -1; turno = 'X'; moveCount = 1;
+            partitaAttiva = false;
+            vincitoriGriglie.fill(null); grigliaObbligatoria = -1; turno = 'X'; moveCount = 1;
+            clearInterval(timerInterval);
+            
             board.innerHTML = ''; board.style.display = 'none';
+            board.classList.remove('turn-x-active', 'turn-o-active');
+            
             document.querySelectorAll('.player-tag').forEach(t => {
                 t.style.display = 'none';
                 t.classList.remove('highlight-tag');
             });
+            document.querySelectorAll('.timer-box').forEach(t => t.style.display = 'none');
+
             document.getElementById('move-history-panel').style.display = 'none';
             homeBtn.style.display = 'none'; globalExitBtn.style.display = 'none';
             infoTurno.innerText = "Scegli il segno per ricominciare!";
-            lobbyContainer.style.display = 'block';
+            
+            // Logica di ritorno intelligente
+            if (isSimulazione) {
+                isSimulazione = false;
+                localLobbyContainer.style.display = 'block'; // Torna alla lobby locale
+                lobbyContainer.style.display = 'none';
+                menuOnline.style.display = 'none';
+            } else if (myPeerId || conn) {
+                lobbyContainer.style.display = 'block';
+                menuOnline.style.display = 'none';
+                localLobbyContainer.style.display = 'none';
+            } else {
+                menuOnline.style.display = 'inline-block';
+                lobbyContainer.style.display = 'none';
+                localLobbyContainer.style.display = 'none';
+            }
+            
             historyList.innerHTML = '';
-            document.getElementById('pref-tag').style.display = 'none';
+            // Feature 4: reset anche dei controlli lobby
+            document.getElementById('pref-tag-sign').style.display = 'none';
+            document.getElementById('pref-tag-mode').style.display = 'none';
+            guestIsReady = false; 
+            hostSelectedSign = null;
+            document.getElementById('btn-start-match').classList.remove('enabled');
+            document.getElementById('enemy-ready-tag').classList.remove('is-ready');
+            document.getElementById('enemy-ready-tag').innerText = "Non Pronto";
+            
             creaGriglia();
         }
 
@@ -773,7 +1381,7 @@
             return null;
         }
 
-        async function copyMyID() { if (!myPeerId) return; playClickSound(); await navigator.clipboard.writeText(myPeerId); copyBtn.innerText = "Copiato! ✅"; setTimeout(() => copyBtn.innerText = "Copia il mio ID Partita 📋", 2000); }
+        async function copyMyID() { if (!myPeerId) return; playClickSound(); await navigator.clipboard.writeText(myPeerId); copyBtn.innerHTML = '<i class="fas fa-check"></i> Copiato!'; setTimeout(() => copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copia il mio ID Partita', 2000); }
         async function pasteID() { playClickSound(); const text = await navigator.clipboard.readText(); document.getElementById('peer-id-input').value = text; }
 
         function lanciaCoriandoli() {
@@ -783,6 +1391,173 @@
                 confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff4d4d', '#4d94ff', '#f1c40f'] });
                 if (Date.now() < fine) requestAnimationFrame(frame);
             }());
+        }
+
+        /* --- NUOVE FUNZIONI LOGICA LOBBY (Features 2, 3, 4) --- */
+
+        // HOST: Aggiorna lo stato e lo invia al guest
+        function hostUpdateLobbyState() {
+            if(!conn) return;
+            const mode = document.getElementById('game-mode-select').value;
+            
+            // Gestione Custom Time Host (Feature 3)
+            const box = document.getElementById('host-custom-time-box');
+            box.style.display = (mode === 'custom') ? 'flex' : 'none';
+            
+            let cTime = 0;
+            if(mode === 'custom') {
+                let m = parseInt(document.getElementById('host-custom-min').value) || 0;
+                let s = parseInt(document.getElementById('host-custom-sec').value) || 0;
+                cTime = (m * 60) + s;
+                if(cTime <= 0) cTime = 300;
+            }
+
+            conn.send({ 
+                tipo: 'lobby-state-update', 
+                mode: mode, 
+                customTime: cTime,
+                hostSign: hostSelectedSign 
+            });
+            checkHostStartButton();
+        }
+
+        // HOST: Seleziona segno (senza avviare)
+        function selezionaSegnoHost(segno) {
+            playClickSound();
+            hostSelectedSign = segno;
+            
+            // UI Update
+            ['X', 'O', 'rnd'].forEach(k => document.getElementById('btn-sel-'+k.toLowerCase()).classList.remove('selected'));
+            let key = segno === 'random' ? 'rnd' : segno.toLowerCase();
+            document.getElementById('btn-sel-'+key).classList.add('selected');
+            
+            hostUpdateLobbyState();
+        }
+
+        // HOST: Applica preferenze avversario (Feature 4)
+        function applicaSuggerimentiAvversario() {
+            if(!lastGuestSuggestion.mode && !lastGuestSuggestion.sign) return;
+            playClickSound();
+            
+            // Applica Modalità
+            if(lastGuestSuggestion.mode) {
+                document.getElementById('game-mode-select').value = lastGuestSuggestion.mode;
+                if(lastGuestSuggestion.mode === 'custom' && lastGuestSuggestion.time) {
+                    let m = Math.floor(lastGuestSuggestion.time / 60);
+                    let s = lastGuestSuggestion.time % 60;
+                    document.getElementById('host-custom-min').value = m;
+                    document.getElementById('host-custom-sec').value = s;
+                }
+            }
+            // Applica Segno (Attenzione: se Guest vuole X, Host diventa O)
+            if(lastGuestSuggestion.sign) {
+                let targetHostSign = 'random';
+                if(lastGuestSuggestion.sign === 'X') targetHostSign = 'O';
+                else if(lastGuestSuggestion.sign === 'O') targetHostSign = 'X';
+                selezionaSegnoHost(targetHostSign);
+            }
+            
+            hostUpdateLobbyState();
+            // Nascondi bottone dopo uso
+            document.getElementById('btn-apply-enemy').style.display = 'none';
+        }
+
+        // HOST: Controlla se si può startare
+        function checkHostStartButton() {
+            const btn = document.getElementById('btn-start-match');
+            const msg = document.getElementById('host-status-msg');
+            
+            if(hostSelectedSign && guestIsReady) {
+                btn.classList.add('enabled');
+                btn.innerHTML = 'AVVIA PARTITA <i class="fas fa-play"></i>';
+                msg.innerText = "Tutti pronti! Premi per iniziare.";
+                msg.style.color = "#27ae60";
+            } else {
+                btn.classList.remove('enabled');
+                if(!hostSelectedSign) msg.innerText = "Seleziona il tuo segno.";
+                else if(!guestIsReady) msg.innerText = "Attendi che l'avversario sia pronto.";
+            }
+        }
+
+        // HOST: Click Start Finale
+        function avviaPartitaFinaleHost() {
+            if(!document.getElementById('btn-start-match').classList.contains('enabled')) return;
+            playClickSound();
+            
+            // Calcolo finale
+            let mode = document.getElementById('game-mode-select').value;
+            let cTime = 0;
+            if(mode === 'custom') {
+                let m = parseInt(document.getElementById('host-custom-min').value) || 0;
+                let s = parseInt(document.getElementById('host-custom-sec').value) || 0;
+                cTime = (m * 60) + s;
+            }
+            
+            let hSign = hostSelectedSign;
+            if(hSign === 'random') hSign = Math.random() < 0.5 ? 'X' : 'O';
+            let gSign = hSign === 'X' ? 'O' : 'X';
+
+            // Invia Start a Guest
+            conn.send({ 
+                tipo: 'start-game-final', 
+                yourSign: gSign, 
+                mode: mode, 
+                customTime: cTime 
+            });
+
+            // Avvia Host
+            mioSegno = hSign;
+            setGameMode(mode, cTime);
+            avviaPartitaUI();
+        }
+
+        // GUEST: Invia Suggerimenti
+        function inviaSuggerimentoGuest() {
+            const mode = document.getElementById('guest-mode-suggest').value;
+            const box = document.getElementById('guest-custom-time-box');
+            box.style.display = (mode === 'custom') ? 'flex' : 'none';
+            
+            let cTime = 0;
+            if(mode === 'custom') {
+                let m = parseInt(document.getElementById('guest-custom-min').value) || 0;
+                let s = parseInt(document.getElementById('guest-custom-sec').value) || 0;
+                cTime = (m * 60) + s;
+            }
+            
+            if(conn) conn.send({ tipo: 'guest-suggestion', subType: 'mode', val: mode, customTime: cTime });
+        }
+
+        function inviaPrefSegnoGuest(segno) {
+            playClickSound();
+            // Evidenzia scelta guest localmente
+            document.querySelectorAll('.sign-btn-select').forEach(b => b.classList.remove('selected'));
+            // Nota: qui semplifico visualmente, in realtà evidenzia solo quello cliccato
+            event.target.classList.add('selected');
+
+            if(conn) conn.send({ tipo: 'guest-suggestion', subType: 'sign', val: segno });
+        }
+
+        // GUEST: Toggle Ready
+        function toggleGuestReady() {
+            playClickSound();
+            const btn = document.getElementById('btn-guest-ready');
+            const isReady = !btn.classList.contains('ready-true'); // Toggle logic
+            
+            if(isReady) {
+                btn.classList.add('ready-true');
+                btn.style.background = "#27ae60";
+                btn.innerHTML = "PRONTO! IN ATTESA HOST... ⏳";
+                document.getElementById('my-ready-tag').classList.add('is-ready');
+                document.getElementById('my-ready-tag').innerText = "PRONTO";
+            } else {
+                btn.classList.remove('ready-true');
+                btn.style.background = "#95a5a6";
+                btn.innerHTML = "NON PRONTO ❌";
+                document.getElementById('my-ready-tag').classList.remove('is-ready');
+                document.getElementById('my-ready-tag').innerText = "Non Pronto";
+            }
+            
+            if(conn) conn.send({ tipo: 'guest-ready-change', isReady: isReady });
         }
     </script>
 </body>
